@@ -5,10 +5,12 @@ from tkinter import filedialog, messagebox, ttk
 import subprocess
 import json
 import os
+import sys
 import threading
 from pathlib import Path
 
-FEEDBACK_RULES = {
+# Default feedback rules - used as fallback if feedback_rules.json is not found
+_FEEDBACK_RULES = {
     'timeout': {
         'human': "User waited too long for '{element}' to appear. Feels stuck and frustrated.",
         'dev': "Add loading spinner. Check if {element} exists in DOM. Increase timeout or optimize backend query."
@@ -28,6 +30,14 @@ FEEDBACK_RULES = {
     'general_fail': {
         'human': "Something broke during '{scenario}'. User experience interrupted.",
         'dev': "Check {scenario} logs in reports/{scenario}.log.html. Add more specific assertions. Screenshot failure state."
+    },
+    'robot_not_installed': {
+        'human': "Test automation tool is not available. Cannot run tests.",
+        'dev': "Robot Framework is not installed or not in PATH. Run: pip install robotframework robotframework-seleniumlibrary"
+    },
+    'test_file_missing': {
+        'human': "Test scenario '{scenario}' cannot be found. Unable to run this test.",
+        'dev': "Create test file at tests/{scenario}.robot or remove scenario from launcher."
     }
 }
 
@@ -48,6 +58,7 @@ class BetaTeam:
         }
         self.is_running = False
         self.stop_event = threading.Event()
+        self.current_process = None  # Track running subprocess for stop capability
         self.prev_results = self.load_results()
         self.feedback_rules = self.load_feedback_rules()
         self.build_ui()
@@ -149,17 +160,39 @@ class BetaTeam:
         return issues if issues else [self.get_feedback('general_fail', scenario)]
 
     def get_feedback(self, issue_type, scenario, *, element='UI', email=''):
-        """Get feedback messages for a specific issue type."""
-        rule = self.feedback_rules.get(issue_type, self.feedback_rules['general_fail'])
-        human_msg = rule['human'].format(
-            scenario=scenario.title(),
-            element=element,
-            email=email
-        )
-        dev_msg = rule['dev'].format(
-            scenario=scenario,
-            element=element
-        )
+        """
+        Get feedback messages for a specific issue type.
+
+        Parameters
+        ----------
+        issue_type : str
+            The type of issue (e.g., 'timeout', 'element_not_found', 'invalid_email').
+        scenario : str
+            The scenario name (e.g., 'onboarding', 'poweruser').
+        element : str, keyword-only, optional
+            The UI element involved in the issue. Used for 'timeout', 'element_not_found'.
+        email : str, keyword-only, optional
+            The email address involved. Used for 'invalid_email'.
+
+        Returns
+        -------
+        dict
+            A dictionary with keys 'type', 'human', and 'dev' containing feedback messages.
+
+        Examples
+        --------
+        >>> self.get_feedback('timeout', 'onboarding', element='submit button')
+        >>> self.get_feedback('invalid_email', 'signup', email='bad@address')
+        """
+        rule = self.feedback_rules.get(issue_type) or self.feedback_rules.get('general_fail') or _FEEDBACK_RULES['general_fail']
+        # Use format_map with defaults to handle missing placeholders gracefully
+        format_values = {
+            'scenario': scenario.title(),
+            'element': element,
+            'email': email
+        }
+        human_msg = rule['human'].format_map(format_values)
+        dev_msg = rule['dev'].format_map(format_values)
         return {'type': issue_type, 'human': human_msg, 'dev': dev_msg}
 
     def log_human_feedback(self, issues):
@@ -179,32 +212,50 @@ class BetaTeam:
         reports_dir = Path(__file__).parent / 'reports'
         reports_dir.mkdir(exist_ok=True)
 
+        # Check if test file exists before attempting to run
+        test_path = Path(__file__).parent / f'tests/{scenario}.robot'
+        if not test_path.exists():
+            issues = [self.get_feedback('test_file_missing', scenario)]
+            self.root.after(0, lambda i=issues: self.log_human_feedback(i))
+            self.root.after(0, lambda i=issues: self.log_dev_feedback(i))
+            return {'scenario': scenario, 'passed': False, 'issues': issues}
+
         cmd = [
             'robot',
             '--variable', f'BUILD_PATH:{build_path}',
-            f'tests/{scenario}.robot',
+            str(test_path),
             '--outputdir', str(reports_dir),
             '--report', 'NONE',
             '--log', f'{scenario}.log.html'
         ]
 
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, cwd=Path(__file__).parent)
-            passed = result.returncode == 0
+            self.current_process = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, cwd=Path(__file__).parent
+            )
+            try:
+                stdout, stderr = self.current_process.communicate(timeout=300)
+                passed = self.current_process.returncode == 0
+            finally:
+                self.current_process = None
 
             # Parse for humanized feedback
-            issues = self.parse_log_for_issues(result.stdout + result.stderr, scenario)
+            issues = self.parse_log_for_issues(stdout + stderr, scenario)
             self.root.after(0, lambda i=issues: self.log_human_feedback(i))
             self.root.after(0, lambda i=issues: self.log_dev_feedback(i))
 
             return {'scenario': scenario, 'passed': passed, 'issues': issues}
         except subprocess.TimeoutExpired:
+            if self.current_process:
+                self.current_process.kill()
+                self.current_process = None
             issues = [self.get_feedback('timeout', scenario, element='test execution')]
             self.root.after(0, lambda i=issues: self.log_human_feedback(i))
             self.root.after(0, lambda i=issues: self.log_dev_feedback(i))
             return {'scenario': scenario, 'passed': False, 'issues': issues}
         except FileNotFoundError:
-            issues = [self.get_feedback('general_fail', scenario, element='robot command')]
+            issues = [self.get_feedback('robot_not_installed', scenario)]
             self.root.after(0, lambda i=issues: self.log_human_feedback(i))
             self.root.after(0, lambda i=issues: self.log_dev_feedback(i))
             return {'scenario': scenario, 'passed': False, 'issues': issues}
@@ -231,7 +282,7 @@ class BetaTeam:
             with open(rules_path, 'r') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
-            return FEEDBACK_RULES
+            return _FEEDBACK_RULES
 
     def save_results(self, results):
         """Save test results to JSON file."""
@@ -271,10 +322,13 @@ class BetaTeam:
                 result = self.run_robot_test(scenario, self.build_path.get())
                 results[scenario] = result
 
-            self.prev_results = results
-            self.save_results(results)
+            # Update results on main thread to avoid race conditions
+            def update_results_on_main_thread():
+                self.prev_results = results
+                self.save_results(results)
+                self._tests_completed()
 
-            self.root.after(0, self._tests_completed)
+            self.root.after(0, update_results_on_main_thread)
 
         thread = threading.Thread(target=run_tests)
         thread.daemon = True
@@ -287,8 +341,13 @@ class BetaTeam:
         self.stop_btn.config(state='disabled')
 
     def stop_tests(self):
-        """Stop running tests."""
+        """Stop running tests and terminate any running subprocess."""
         self.stop_event.set()
+        if self.current_process:
+            try:
+                self.current_process.terminate()
+            except ProcessLookupError:
+                pass  # Process has already finished
 
     def clear_log(self):
         """Clear all feedback logs."""
@@ -307,6 +366,8 @@ class BetaTeam:
         reports_dir.mkdir(exist_ok=True)
         if os.name == 'nt':
             os.startfile(reports_dir)
+        elif sys.platform == 'darwin':
+            subprocess.run(['open', str(reports_dir)], check=False)
         elif os.name == 'posix':
             subprocess.run(['xdg-open', str(reports_dir)], check=False)
 
