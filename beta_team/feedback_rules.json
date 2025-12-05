@@ -5,7 +5,7 @@
     },
     "element_not_found": {
         "human": "Couldn't find '{element}' button/field. User can't complete the task.",
-        "dev": "Verify '{element}' selector exists in latest build. Check CSS changes broke locator. Add data-testid."
+        "dev": "Verify '{element}' selector exists in latest build. Check if CSS changes broke locator. Add data-testid."
     },
     "invalid_email": {
         "human": "Email validation rejected '{email}'. User confused about format rules.",
