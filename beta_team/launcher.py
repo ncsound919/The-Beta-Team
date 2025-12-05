@@ -195,19 +195,19 @@ class BetaTeam:
 
             # Parse for humanized feedback
             issues = self.parse_log_for_issues(result.stdout + result.stderr, scenario)
-            self.root.after(0, lambda: self.log_human_feedback(issues))
-            self.root.after(0, lambda: self.log_dev_feedback(issues))
+            self.root.after(0, lambda i=issues: self.log_human_feedback(i))
+            self.root.after(0, lambda i=issues: self.log_dev_feedback(i))
 
             return {'scenario': scenario, 'passed': passed, 'issues': issues}
         except subprocess.TimeoutExpired:
             issues = [self.get_feedback('timeout', scenario, element='test execution')]
-            self.root.after(0, lambda: self.log_human_feedback(issues))
-            self.root.after(0, lambda: self.log_dev_feedback(issues))
+            self.root.after(0, lambda i=issues: self.log_human_feedback(i))
+            self.root.after(0, lambda i=issues: self.log_dev_feedback(i))
             return {'scenario': scenario, 'passed': False, 'issues': issues}
         except FileNotFoundError:
             issues = [self.get_feedback('general_fail', scenario, element='robot command')]
-            self.root.after(0, lambda: self.log_human_feedback(issues))
-            self.root.after(0, lambda: self.log_dev_feedback(issues))
+            self.root.after(0, lambda i=issues: self.log_human_feedback(i))
+            self.root.after(0, lambda i=issues: self.log_dev_feedback(i))
             return {'scenario': scenario, 'passed': False, 'issues': issues}
 
     def browse_build(self):
