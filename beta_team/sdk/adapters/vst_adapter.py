@@ -213,12 +213,15 @@ class VSTAdapter(BaseAdapter):
         # WinAppDriver screenshot via session
         if self._winappdriver_session:
             try:
-                # session.get_screenshot_as_file(screenshot_path)
+                self._winappdriver_session.get_screenshot_as_file(screenshot_path)
                 self._logs.append(f"Screenshot captured: {screenshot_path}")
                 return screenshot_path
             except Exception as e:
                 self._logs.append(f"Screenshot failed: {e}")
+                return None
 
+        # Return path even without session for placeholder purposes
+        self._logs.append(f"Screenshot path (session not available): {screenshot_path}")
         return screenshot_path
 
     def collect_metrics(self) -> BenchmarkMetrics:
