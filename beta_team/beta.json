@@ -1,0 +1,14 @@
+{
+    "name": "Beta Team Launcher v3.0",
+    "version": "3.0.0",
+    "description": "Professional UI + Humanized feedback + Dev action items for every issue",
+    "author": "Beta Team",
+    "requirements": {
+        "os": "Windows",
+        "python": ">=3.10",
+        "install_commands": [
+            "pip install robotframework robotframework-seleniumlibrary selenium pillow",
+            "Download ChromeDriver matching your Chrome version"
+        ]
+    }
+}
