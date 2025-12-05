@@ -190,13 +190,15 @@ class BetaTeam:
             '--report', 'NONE',
             '--log', f'{scenario}.log.html'
         ]
+        start_time = time.time()
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        duration = time.time() - start_time
         passed = 'PASS' in result.stdout
         self.log(f'{scenario}: {"✅ PASS" if passed else "❌ FAIL"}')
         return {
             'scenario': scenario,
             'passed': passed,
-            'duration': time.time(),
+            'duration': duration,
             'log': result.stdout
         }
 
