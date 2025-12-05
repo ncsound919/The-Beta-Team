@@ -18,7 +18,7 @@ Open Application
     Log    Opening application: ${path}
 
 Test Invalid Inputs
-    Input Text    id=email    invalid@@email
+    Input Text    id=email    invalid@email
     Click Element    id=submit
     Page Should Contain    Invalid email
 

@@ -17,3 +17,13 @@ First Time User Onboarding
     ${end}=    Get Time    epoch
     Log    Onboarding took ${end}-${start} seconds
     [Teardown]    Close Application
+
+*** Keywords ***
+Start Application
+    [Arguments]    ${path}
+    Log    Starting application: ${path}
+    # Placeholder: implement application start logic based on your app type
+
+Close Application
+    Log    Closing application
+    # Placeholder: implement application close logic based on your app type

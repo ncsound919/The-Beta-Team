@@ -18,6 +18,9 @@ class BetaTeam:
             'poweruser': tk.BooleanVar(),
             'edgecases': tk.BooleanVar()
         }
+        # Get the directory where the script is located
+        self.script_dir = Path(__file__).parent.resolve()
+        self.results_file = self.script_dir / 'results.json'
         self.prev_results = self.load_results()
         self.build_ui()
 
@@ -48,13 +51,13 @@ class BetaTeam:
 
     def load_results(self):
         try:
-            with open('results.json', 'r') as f:
+            with open(self.results_file, 'r') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             return {}
 
     def save_results(self, results):
-        with open('results.json', 'w') as f:
+        with open(self.results_file, 'w') as f:
             json.dump(results, f, indent=2)
 
     def run_tests(self):
@@ -87,19 +90,23 @@ class BetaTeam:
         self.save_results(benchmarks)
 
     def run_robot_test(self, scenario, build_path):
+        tests_dir = self.script_dir / 'tests'
+        reports_dir = self.script_dir / 'reports'
         cmd = [
             'robot',
             '--variable', f'BUILD_PATH:{build_path}',
-            f'tests/{scenario}.robot',
-            '--outputdir', 'reports',
+            str(tests_dir / f'{scenario}.robot'),
+            '--outputdir', str(reports_dir),
             '--report', 'NONE',
             '--log', f'{scenario}.log.html'
         ]
+        test_start = time.time()
         result = subprocess.run(cmd, capture_output=True, text=True)
+        test_duration = time.time() - test_start
         return {
             'scenario': scenario,
             'passed': 'PASS' in result.stdout,
-            'duration': time.time(),
+            'duration': test_duration,
             'log': result.stdout
         }
 
