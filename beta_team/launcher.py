@@ -191,7 +191,7 @@ class BetaTeam:
 
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, cwd=Path(__file__).parent)
-            passed = 'PASS' in result.stdout
+            passed = result.returncode == 0
 
             # Parse for humanized feedback
             issues = self.parse_log_for_issues(result.stdout + result.stderr, scenario)
