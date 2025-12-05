@@ -204,7 +204,7 @@ class BetaTeam:
         build_name = Path(self.build_path.get()).stem
         current = {'build': build_name, 'time': total_time, 'results': results}
         prev = self.prev_results.get(build_name, {})
-        prev_time = prev.get('time', 1) if prev else 1
+        prev_time = prev.get('time', 1) if prev and prev.get('time', 0) > 0 else 1
         delta = 'NEW' if not prev else f'{((total_time - prev_time) / prev_time * 100):+.0f}%'
         result = {build_name: current, 'delta': delta}
         self.prev_results = result
