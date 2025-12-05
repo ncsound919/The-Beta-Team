@@ -16,9 +16,14 @@ Edge Case Testing
 Open Application
     [Arguments]    ${path}
     Log    Opening application: ${path}
+    # NOTE: This is a placeholder keyword. Implement actual application launch logic
+    # based on your application type (e.g., Open Browser for web apps, or custom
+    # keywords for desktop apps using AppiumLibrary or other libraries).
 
 Test Invalid Inputs
-    Input Text    id=email    invalid@email
+    # NOTE: These UI interactions require the application to be running.
+    # The Open Application keyword above must be implemented first.
+    Input Text    id=email    invalid-email
     Click Element    id=submit
     Page Should Contain    Invalid email
 

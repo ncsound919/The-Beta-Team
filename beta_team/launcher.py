@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import subprocess
 import json
-import os
 import time
 from pathlib import Path
 
@@ -70,11 +69,22 @@ class BetaTeam:
     def run_tests(self):
         selected = [k for k, v in self.scenarios.items() if v.get()]
         if not selected:
-            messagebox.showwarning('No scenarios', 'Select at least one scenario')
+            messagebox.showwarning('No Scenarios Selected', 'Select at least one scenario')
             return
 
         if not self.build_path.get():
-            messagebox.showwarning('No build', 'Select a build file')
+            messagebox.showwarning('No Build Selected', 'Select a build file')
+            return
+
+        # Validate build path
+        build_file = Path(self.build_path.get())
+        if not build_file.exists() or not build_file.is_file():
+            messagebox.showwarning('Invalid Build Path', f'Build file does not exist: {build_file}')
+            return
+        # Allow files without extension for Unix executables (common on Linux/macOS)
+        allowed_extensions = ['.exe', '.app', '.sh', '.bat', '.cmd', '']
+        if build_file.suffix.lower() not in allowed_extensions:
+            messagebox.showwarning('Unsupported File Type', f'Unsupported file type: {build_file.suffix}')
             return
 
         self.results_text.delete(1.0, tk.END)
@@ -108,15 +118,30 @@ class BetaTeam:
             '--log', f'{scenario}.log.html'
         ]
         test_start = time.time()
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        test_duration = time.time() - test_start
-        # Use exit code for reliable test result detection (0 = pass, non-zero = fail)
-        return {
-            'scenario': scenario,
-            'passed': result.returncode == 0,
-            'duration': test_duration,
-            'log': result.stdout
-        }
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            test_duration = time.time() - test_start
+            # Use exit code for reliable test result detection (0 = pass, non-zero = fail)
+            return {
+                'scenario': scenario,
+                'passed': result.returncode == 0,
+                'duration': test_duration,
+                'log': result.stdout
+            }
+        except FileNotFoundError:
+            return {
+                'scenario': scenario,
+                'passed': False,
+                'duration': 0,
+                'log': 'Error: Robot Framework not found. Please install with: pip install robotframework'
+            }
+        except Exception as e:
+            return {
+                'scenario': scenario,
+                'passed': False,
+                'duration': 0,
+                'log': f'Error running test: {str(e)}'
+            }
 
     def calculate_benchmarks(self, results, total_time):
         build_name = Path(self.build_path.get()).stem
@@ -129,12 +154,15 @@ class BetaTeam:
                 delta_percent = ((total_time - prev_time) / prev_time) * 100
                 current['delta'] = f'{delta_percent:+.0f}%'
 
-        return {build_name: current, 'delta': current['delta']}
+        # Merge with existing history instead of replacing it
+        updated_history = self.prev_results.copy()
+        updated_history[build_name] = current
+        return updated_history
 
     def display_results(self, benchmarks):
         self.results_text.insert(tk.END, '\n=== BETA TEAM RESULTS ===\n')
         for build, data in benchmarks.items():
-            if build != 'delta' and isinstance(data, dict):
+            if isinstance(data, dict):
                 passed_count = len([r for r in data.get('results', []) if r.get('passed')])
                 total_count = len(data.get('results', []))
                 delta = data.get('delta', 'N/A')
