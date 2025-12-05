@@ -1,6 +1,8 @@
 *** Settings ***
 Library    SeleniumLibrary
 
+*** Variables ***
+${BUILD_PATH}    ${EMPTY}
 *** Test Cases ***
 Edge Case Testing
     Open Browser    ${BUILD_PATH}    chrome
