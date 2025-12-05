@@ -263,7 +263,7 @@ class WebAdapter(BaseAdapter):
             if self._page:
                 self._page.screenshot(path=screenshot_path)
                 self._logs.append(f"Screenshot saved: {screenshot_path}")
-                return screenshot_path
+        return None
             elif self._driver:
                 self._driver.save_screenshot(screenshot_path)
                 self._logs.append(f"Screenshot saved: {screenshot_path}")
