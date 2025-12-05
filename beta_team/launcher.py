@@ -136,13 +136,15 @@ class BetaTeam:
 
         # Pattern matching common failures
         if 'timeout' in log_lower:
-            issues.append(self.get_feedback('timeout', scenario, element='button/element'))
+            issues.append(self.get_feedback('timeout', scenario, element='page element'))
         if 'not found' in log_lower or 'no such element' in log_lower:
             issues.append(self.get_feedback('element_not_found', scenario, element='critical button'))
         if 'invalid email' in log_lower:
             issues.append(self.get_feedback('invalid_email', scenario, email='testuser@beta.com'))
-        # Only flag missing welcome if test explicitly failed on welcome check
-        if 'should contain' in log_lower and 'welcome' in log_lower and 'fail' in log_lower:
+        # Only flag missing welcome if test explicitly failed on welcome assertion
+        # Robot Framework uses 'FAIL :' pattern for failed test assertions
+        if ('page should contain' in log_lower and 'welcome' in log_lower and
+                ('fail :' in log_lower or '| fail |' in log_lower)):
             issues.append(self.get_feedback('no_welcome', scenario))
 
         return issues if issues else [self.get_feedback('general_fail', scenario)]
