@@ -9,13 +9,14 @@ Provides report generation with:
 - AI-powered feedback summaries
 """
 
+import html as html_escape_module
 import json
 import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 
 @dataclass
@@ -274,10 +275,13 @@ class ReportGenerator:
 """
 
         for issue in self._issues:
+            escaped_title = html_escape_module.escape(issue['title'])
+            escaped_description = html_escape_module.escape(issue['description'])
+            escaped_severity = html_escape_module.escape(issue['severity'])
             html += f"""
-        <div class="issue {issue['severity']}">
-            <strong>{issue['title']}</strong>
-            <p>{issue['description']}</p>
+        <div class="issue {escaped_severity}">
+            <strong>{escaped_title}</strong>
+            <p>{escaped_description}</p>
             <small>Occurrences: {issue.get('occurrences', 1)}</small>
         </div>
 """
@@ -290,7 +294,8 @@ class ReportGenerator:
         <ul>
 """
         for bullet in bullets:
-            html += f"            <li>{bullet}</li>\n"
+            escaped_bullet = html_escape_module.escape(bullet)
+            html += f"            <li>{escaped_bullet}</li>\n"
 
         html += """
         </ul>

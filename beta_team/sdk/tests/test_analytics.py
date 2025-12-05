@@ -3,13 +3,10 @@
 import json
 import os
 import tempfile
-from datetime import datetime
 
-import pytest
-
-from beta_team.sdk.analytics.metrics import MetricsCollector, RealTimeMetrics, TestMetric
+from beta_team.sdk.analytics.metrics import MetricsCollector
 from beta_team.sdk.analytics.reports import ReportGenerator, TestCase, TestSuite, AllureReportAdapter
-from beta_team.sdk.analytics.visualizer import DashboardVisualizer, ChartData
+from beta_team.sdk.analytics.visualizer import DashboardVisualizer
 
 
 class TestMetricsCollector:

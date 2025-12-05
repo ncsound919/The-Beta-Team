@@ -11,12 +11,11 @@ Provides real-time metrics collection similar to Statsig for tracking:
 
 import json
 import os
-import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 
 @dataclass
@@ -272,6 +271,7 @@ class MetricsCollector:
             self._load_times = data.get("load_times", [])
 
         except (json.JSONDecodeError, KeyError):
+            # History file is corrupted or has unexpected format - start fresh
             pass
 
     def reset(self) -> None:

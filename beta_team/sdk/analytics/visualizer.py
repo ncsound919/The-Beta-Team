@@ -9,12 +9,13 @@ Provides visualization components for:
 - Historical trends
 """
 
+import html as html_escape_module
 import json
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 
 @dataclass
@@ -152,11 +153,12 @@ class DashboardVisualizer:
         Returns:
             Screenshot diff data.
         """
+        # Escape values to prevent XSS when rendered in HTML
         diff_data = {
-            "name": name,
-            "baseline": baseline_path,
-            "current": current_path,
-            "diff": diff_path,
+            "name": html_escape_module.escape(name),
+            "baseline": html_escape_module.escape(baseline_path),
+            "current": html_escape_module.escape(current_path),
+            "diff": html_escape_module.escape(diff_path) if diff_path else None,
             "timestamp": datetime.now().isoformat(),
         }
         self._screenshots.append(diff_data)

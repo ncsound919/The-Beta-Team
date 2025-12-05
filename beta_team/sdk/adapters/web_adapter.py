@@ -10,7 +10,6 @@ This adapter supports:
 
 import os
 import time
-from datetime import datetime
 from typing import Any, Optional
 
 from beta_team.sdk.core.base import (
@@ -162,6 +161,7 @@ class WebAdapter(BaseAdapter):
             try:
                 self._page.close()
             except Exception:
+                # Page may already be closed or browser crashed - continue cleanup
                 pass
             self._page = None
 
@@ -169,6 +169,7 @@ class WebAdapter(BaseAdapter):
             try:
                 self._playwright.stop()
             except Exception:
+                # Playwright may already be stopped - continue cleanup
                 pass
             self._playwright = None
 
@@ -176,6 +177,7 @@ class WebAdapter(BaseAdapter):
             try:
                 self._driver.quit()
             except Exception:
+                # Driver may already be quit - continue cleanup
                 pass
             self._driver = None
 
@@ -263,7 +265,7 @@ class WebAdapter(BaseAdapter):
             if self._page:
                 self._page.screenshot(path=screenshot_path)
                 self._logs.append(f"Screenshot saved: {screenshot_path}")
-        return None
+                return screenshot_path
             elif self._driver:
                 self._driver.save_screenshot(screenshot_path)
                 self._logs.append(f"Screenshot saved: {screenshot_path}")

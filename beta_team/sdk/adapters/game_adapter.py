@@ -11,7 +11,6 @@ This adapter supports:
 import os
 import subprocess
 import time
-from datetime import datetime
 from typing import Any, Optional
 
 from beta_team.sdk.core.base import (
@@ -77,12 +76,20 @@ class GameAdapter(BaseAdapter):
             self._logs.append(f"Game executable not found: {target}")
             return False
 
+        # Validate that target is a file (not a directory) and has executable extension
+        if not os.path.isfile(target):
+            self._logs.append(f"Target is not a file: {target}")
+            return False
+
         try:
-            # Build launch arguments
+            # Build launch arguments - only allow known safe arguments
             args = [target]
-            if self._config.get("resolution"):
-                args.extend(["-screen-width", self._config["resolution"].split("x")[0]])
-                args.extend(["-screen-height", self._config["resolution"].split("x")[1]])
+            resolution = self._config.get("resolution")
+            if resolution and isinstance(resolution, str):
+                parts = resolution.split("x")
+                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                    args.extend(["-screen-width", parts[0]])
+                    args.extend(["-screen-height", parts[1]])
             if self._config.get("fullscreen") is False:
                 args.append("-windowed")
 
@@ -223,6 +230,7 @@ class GameAdapter(BaseAdapter):
                 metrics.memory_usage_mb = proc.memory_info().rss / (1024 * 1024)
                 metrics.cpu_usage_percent = proc.cpu_percent()
             except (ImportError, psutil.NoSuchProcess, psutil.AccessDenied):
+                # psutil not available or process no longer exists - metrics will use defaults
                 pass
 
         # FPS and other metrics would come from game hooks or BetaHub
@@ -270,6 +278,16 @@ class GameAdapter(BaseAdapter):
         Returns:
             True if feedback sent successfully.
         """
+        # Validate Discord webhook URL
+        if not channel_webhook.startswith("https://discord.com/api/webhooks/"):
+            self._logs.append("Invalid Discord webhook URL: must start with https://discord.com/api/webhooks/")
+            return False
+
+        # Discord has a 2000 character limit for messages
+        max_message_length = 2000
+        if len(message) > max_message_length:
+            message = message[:max_message_length - 3] + "..."
+
         try:
             import json
             import urllib.request

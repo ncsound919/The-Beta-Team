@@ -11,7 +11,6 @@ This adapter supports:
 import os
 import subprocess
 import time
-from datetime import datetime
 from typing import Any, Optional
 
 from beta_team.sdk.core.base import (
@@ -74,11 +73,23 @@ class WindowsAdapter(BaseAdapter):
             self._logs.append(f"Application not found: {target}")
             return False
 
+        # Validate that target is a file (not a directory)
+        if not os.path.isfile(target):
+            self._logs.append(f"Target is not a file: {target}")
+            return False
+
         try:
-            # Build launch arguments
+            # Build launch arguments with validation
             args = [target]
-            if self._config.get("app_arguments"):
-                args.extend(self._config["app_arguments"])
+            app_arguments = self._config.get("app_arguments")
+            if app_arguments:
+                # Validate arguments are strings and don't contain shell metacharacters
+                if isinstance(app_arguments, list):
+                    for arg in app_arguments:
+                        if isinstance(arg, str) and not any(c in arg for c in ['|', '&', ';', '`', '$', '(', ')', '{', '}']):
+                            args.append(arg)
+                        else:
+                            self._logs.append(f"Skipping invalid argument: {arg}")
 
             launch_start = time.time()
             self._app_process = subprocess.Popen(
@@ -169,6 +180,7 @@ class WindowsAdapter(BaseAdapter):
             try:
                 self._winappdriver_session.quit()
             except Exception:
+                # Session may already be closed or app crashed - continue cleanup
                 pass
             self._winappdriver_session = None
 
@@ -307,6 +319,7 @@ class WindowsAdapter(BaseAdapter):
                 metrics.memory_usage_mb = proc.memory_info().rss / (1024 * 1024)
                 metrics.cpu_usage_percent = proc.cpu_percent(interval=0.1)
             except (ImportError, Exception):
+                # psutil not available or process metrics unavailable - use defaults
                 pass
 
         metrics.custom_metrics.update({

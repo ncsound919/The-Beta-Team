@@ -7,8 +7,7 @@ using WinAppDriver for UI automation and metrics collection.
 
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 
 @dataclass
@@ -111,6 +110,7 @@ class WinAppDriverBenchmark:
             try:
                 self._session.quit()
             except Exception:
+                # Session may already be closed or app crashed - continue cleanup
                 pass
             self._session = None
         self._logs.append("Session ended")
@@ -148,6 +148,7 @@ class WinAppDriverBenchmark:
                 self._session.find_element(by, locator_value)
                 times.append((time.time() - start) * 1000)
             except Exception:
+                # Element not found in this iteration - skip timing
                 pass
 
         if times:
@@ -193,6 +194,7 @@ class WinAppDriverBenchmark:
                 times.append((time.time() - start) * 1000)
 
             except Exception:
+                # Element not found or action failed - skip this iteration
                 pass
 
         if times:

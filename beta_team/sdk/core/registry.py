@@ -91,6 +91,7 @@ class AdapterRegistry:
                     if adapter_class.SOFTWARE_TYPE == software_type:
                         results.append(name)
             except Exception:
+                # Adapter class may have issues - skip it and continue with others
                 pass
         return results
 

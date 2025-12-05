@@ -8,7 +8,7 @@ Playwright for end-to-end browser automation and performance metrics.
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Optional
 
 
 @dataclass
@@ -111,6 +111,7 @@ class PlaywrightBenchmark:
             try:
                 self._page.close()
             except Exception:
+                # Page may already be closed or browser crashed - continue cleanup
                 pass
             self._page = None
 
@@ -118,6 +119,7 @@ class PlaywrightBenchmark:
             try:
                 self._browser.close()
             except Exception:
+                # Browser may already be closed - continue cleanup
                 pass
             self._browser = None
 
@@ -125,6 +127,7 @@ class PlaywrightBenchmark:
             try:
                 self._playwright.stop()
             except Exception:
+                # Playwright may already be stopped - continue cleanup
                 pass
             self._playwright = None
 
@@ -261,6 +264,7 @@ class PlaywrightBenchmark:
                     body = response.body()
                     total_size += len(body)
                 except Exception:
+                    # Some responses may not have a body or may fail to read - skip
                     pass
 
             self._page.on("request", handle_request)

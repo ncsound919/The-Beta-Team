@@ -11,7 +11,6 @@ This adapter supports:
 import os
 import subprocess
 import time
-from datetime import datetime
 from typing import Any, Optional
 
 from beta_team.sdk.core.base import (
@@ -102,6 +101,16 @@ class VSTAdapter(BaseAdapter):
         daw_path = self._config.get("daw_path")
         if not daw_path or not os.path.exists(daw_path):
             self._logs.append("DAW executable not configured or not found")
+            return False
+
+        # Validate that daw_path is a file
+        if not os.path.isfile(daw_path):
+            self._logs.append(f"DAW path is not a file: {daw_path}")
+            return False
+
+        # Validate that project_path exists and is a file
+        if not os.path.exists(project_path) or not os.path.isfile(project_path):
+            self._logs.append(f"Project file not found: {project_path}")
             return False
 
         try:
@@ -240,6 +249,7 @@ class VSTAdapter(BaseAdapter):
                 metrics.memory_usage_mb = proc.memory_info().rss / (1024 * 1024)
                 metrics.cpu_usage_percent = proc.cpu_percent()
             except (ImportError, Exception):
+                # psutil not available or process metrics unavailable - use defaults
                 pass
 
         # Audio-specific metrics

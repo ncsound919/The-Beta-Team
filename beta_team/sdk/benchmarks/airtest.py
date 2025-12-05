@@ -121,13 +121,10 @@ class AirTestBenchmark:
 
         for _ in range(iterations):
             start = time.time()
-            try:
-                # AirTest image match would go here
-                # from airtest.core.api import exists
-                # exists(Template(template_path))
-                pass
-            except Exception:
-                pass
+            # AirTest image match would go here when library is available
+            # from airtest.core.api import exists
+            # exists(Template(template_path))
+            # For now, measure baseline timing without actual image matching
             times.append((time.time() - start) * 1000)
 
         if times:
@@ -155,15 +152,12 @@ class AirTestBenchmark:
 
         for _ in range(iterations):
             start = time.time()
-            try:
-                # AirTest touch would go here
-                # from airtest.core.api import touch, wait
-                # touch((x, y))
-                # if wait_template:
-                #     wait(Template(wait_template))
-                pass
-            except Exception:
-                pass
+            # AirTest touch would go here when library is available
+            # from airtest.core.api import touch, wait
+            # touch((x, y))
+            # if wait_template:
+            #     wait(Template(wait_template))
+            # For now, measure baseline timing without actual touch interaction
             times.append((time.time() - start) * 1000)
 
         if times:
@@ -188,13 +182,10 @@ class AirTestBenchmark:
         start = time.time()
 
         while time.time() - start < duration_seconds:
-            try:
-                # FPS measurement would use platform-specific methods
-                # For Android: adb shell dumpsys gfxinfo
-                # For Windows: DirectX/OpenGL hooks or process monitoring
-                pass
-            except Exception:
-                pass
+            # FPS measurement would use platform-specific methods when implemented
+            # For Android: adb shell dumpsys gfxinfo
+            # For Windows: DirectX/OpenGL hooks or process monitoring
+            # For now, just sleep to simulate measurement interval
             time.sleep(0.1)
 
         if fps_samples:
@@ -259,15 +250,14 @@ class AirTestBenchmark:
         success = True
         error_msg = None
 
-        try:
-            # AirTest script execution would go here
-            # from airtest.cli.runner import run_script
-            # run_script(script_path)
-            pass
-        except Exception as e:
-            success = False
-            error_msg = str(e)
-            self._metrics.crash_count += 1
+        # AirTest script execution would go here when library is available
+        # from airtest.cli.runner import run_script
+        # try:
+        #     run_script(script_path)
+        # except Exception as e:
+        #     success = False
+        #     error_msg = str(e)
+        #     self._metrics.crash_count += 1
 
         return {
             "success": success,
@@ -287,6 +277,13 @@ class AirTestBenchmark:
             Dictionary with Android metrics.
         """
         if self.platform != "android":
+            return {}
+
+        # Validate package name to prevent command injection
+        # Package names should only contain alphanumeric chars, dots, and underscores
+        import re
+        if not re.match(r'^[a-zA-Z][a-zA-Z0-9_.]*$', package_name):
+            self._logs.append(f"Invalid package name format: {package_name}")
             return {}
 
         metrics = {}
@@ -310,12 +307,12 @@ class AirTestBenchmark:
                     break
 
             # Get GPU rendering info
-            result = subprocess.run(
+            subprocess.run(
                 ["adb", "shell", "dumpsys", "gfxinfo", package_name],
                 capture_output=True,
                 text=True,
             )
-            # Parse frame times
+            # Parse frame times - implementation depends on specific gfxinfo output
 
         except Exception as e:
             self._logs.append(f"Android metrics collection failed: {e}")
