@@ -5,7 +5,6 @@ from tkinter import filedialog, messagebox, ttk
 import subprocess
 import json
 import os
-import time
 import threading
 from pathlib import Path
 
