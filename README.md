@@ -1,4 +1,9 @@
 # The-Beta-Team
+Agentic Software Beta Testing 
+
+## Beta Team Launcher v2.0
+
+Enhanced UI/UX with menu bar, Go/Stop buttons, status bar for professional beta testing.
 
 Agentic Software Beta Testing - Local open-source beta testing dashboard for desktop/web apps with menu toggles, benchmarks, and deltas.
 
