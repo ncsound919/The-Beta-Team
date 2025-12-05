@@ -147,7 +147,7 @@ class BetaTeam:
 
         return issues if issues else [self.get_feedback('general_fail', scenario)]
 
-    def get_feedback(self, issue_type, scenario, element='UI', email=''):
+    def get_feedback(self, issue_type, scenario, *, element='UI', email=''):
         """Get feedback messages for a specific issue type."""
         rule = self.feedback_rules.get(issue_type, self.feedback_rules['general_fail'])
         human_msg = rule['human'].format(
@@ -198,12 +198,12 @@ class BetaTeam:
 
             return {'scenario': scenario, 'passed': passed, 'issues': issues}
         except subprocess.TimeoutExpired:
-            issues = [self.get_feedback('timeout', scenario, 'test execution')]
+            issues = [self.get_feedback('timeout', scenario, element='test execution')]
             self.root.after(0, lambda: self.log_human_feedback(issues))
             self.root.after(0, lambda: self.log_dev_feedback(issues))
             return {'scenario': scenario, 'passed': False, 'issues': issues}
         except FileNotFoundError:
-            issues = [self.get_feedback('general_fail', scenario)]
+            issues = [self.get_feedback('general_fail', scenario, element='robot command')]
             self.root.after(0, lambda: self.log_human_feedback(issues))
             self.root.after(0, lambda: self.log_dev_feedback(issues))
             return {'scenario': scenario, 'passed': False, 'issues': issues}
