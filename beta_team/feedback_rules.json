@@ -1,0 +1,22 @@
+{
+    "timeout": {
+        "human": "User waited too long for '{element}' to appear. Feels stuck and frustrated.",
+        "dev": "Add loading spinner. Check if {element} exists in DOM. Increase timeout or optimize backend query."
+    },
+    "element_not_found": {
+        "human": "Couldn't find '{element}' button/field. User can't complete the task.",
+        "dev": "Verify '{element}' selector exists in latest build. Check if CSS changes broke locator. Add data-testid."
+    },
+    "invalid_email": {
+        "human": "Email validation rejected '{email}'. User confused about format rules.",
+        "dev": "Add inline validation message explaining format. Show example 'user@domain.com'. Handle @@ gracefully."
+    },
+    "no_welcome": {
+        "human": "No 'Welcome' message after signup. User thinks signup failed.",
+        "dev": "Verify success state renders 'Welcome' text. Check API response. Add fallback success indicator."
+    },
+    "general_fail": {
+        "human": "Something broke during '{scenario}'. User experience interrupted.",
+        "dev": "Check {scenario} logs in reports/{scenario}.log.html. Add more specific assertions. Screenshot failure state."
+    }
+}
