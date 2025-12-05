@@ -45,7 +45,14 @@ class BetaTeam:
         self.results_text.pack(pady=10, padx=10, fill='both', expand=True)
 
     def browse_build(self):
-        path = filedialog.askopenfilename(filetypes=[('Executables', '*.exe'), ('All', '*.*')])
+        # Support multiple executable formats for cross-platform compatibility
+        filetypes = [
+            ('Executables', '*.exe *.app *.sh *.bat *.cmd'),
+            ('Windows Executables', '*.exe'),
+            ('Shell Scripts', '*.sh *.bat *.cmd'),
+            ('All Files', '*.*')
+        ]
+        path = filedialog.askopenfilename(filetypes=filetypes)
         if path:
             self.build_path.set(path)
 
@@ -103,9 +110,10 @@ class BetaTeam:
         test_start = time.time()
         result = subprocess.run(cmd, capture_output=True, text=True)
         test_duration = time.time() - test_start
+        # Use exit code for reliable test result detection (0 = pass, non-zero = fail)
         return {
             'scenario': scenario,
-            'passed': 'PASS' in result.stdout,
+            'passed': result.returncode == 0,
             'duration': test_duration,
             'log': result.stdout
         }
@@ -115,8 +123,8 @@ class BetaTeam:
         current = {'build': build_name, 'time': total_time, 'results': results, 'delta': 'NEW'}
         prev = self.prev_results.get(build_name, {})
 
-        if prev:
-            prev_time = prev.get('time', 1)
+        if prev and 'time' in prev:
+            prev_time = prev['time']
             if prev_time > 0:
                 delta_percent = ((total_time - prev_time) / prev_time) * 100
                 current['delta'] = f'{delta_percent:+.0f}%'
