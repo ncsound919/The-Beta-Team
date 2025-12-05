@@ -1,1 +1,3 @@
 # Placeholder to keep builds directory in git
+# This directory is for build executables (EXEs)
+# Drop your .exe files here for beta testing
