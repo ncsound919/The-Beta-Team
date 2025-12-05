@@ -3,8 +3,10 @@ from tkinter import filedialog, messagebox, ttk
 import subprocess
 import json
 import os
+import sys
 import time
 import threading
+import webbrowser
 from pathlib import Path
 
 class BetaTeam:
@@ -103,9 +105,10 @@ class BetaTeam:
 
     def log(self, message):
         timestamp = time.strftime('%H:%M:%S')
-        self.results_text.insert(tk.END, f'[{timestamp}] {message}\n')
-        self.results_text.see(tk.END)
-        self.root.update()
+        def append_log():
+            self.results_text.insert(tk.END, f'[{timestamp}] {message}\n')
+            self.results_text.see(tk.END)
+        self.root.after(0, append_log)
 
     def browse_build(self):
         path = filedialog.askopenfilename(filetypes=[('Executables', '*.exe'), ('All', '*.*')])
@@ -117,7 +120,7 @@ class BetaTeam:
         try:
             with open('results.json', 'r') as f:
                 return json.load(f)
-        except:
+        except (FileNotFoundError, json.JSONDecodeError):
             return {}
 
     def save_results_manually(self):
@@ -182,6 +185,17 @@ class BetaTeam:
         self.status_label.config(text='Tests complete ✅', foreground='green')
 
     def run_robot_test(self, scenario, build_path):
+        # Validate build path exists
+        if build_path and not os.path.exists(build_path):
+            msg = f"Build path does not exist: {build_path}"
+            self.log(f"{scenario}: ❌ ERROR - {msg}")
+            return {
+                'scenario': scenario,
+                'passed': False,
+                'duration': 0,
+                'log': msg
+            }
+        
         cmd = [
             'robot',
             '--variable', f'BUILD_PATH:{build_path}',
@@ -190,17 +204,36 @@ class BetaTeam:
             '--report', 'NONE',
             '--log', f'{scenario}.log.html'
         ]
-        start_time = time.time()
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        duration = time.time() - start_time
-        passed = 'PASS' in result.stdout
-        self.log(f'{scenario}: {"✅ PASS" if passed else "❌ FAIL"}')
-        return {
-            'scenario': scenario,
-            'passed': passed,
-            'duration': duration,
-            'log': result.stdout
-        }
+        try:
+            start_time = time.time()
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            duration = time.time() - start_time
+            passed = result.returncode == 0
+            self.log(f'{scenario}: {"✅ PASS" if passed else "❌ FAIL"}')
+            return {
+                'scenario': scenario,
+                'passed': passed,
+                'duration': duration,
+                'log': result.stdout
+            }
+        except subprocess.TimeoutExpired:
+            msg = f"Test {scenario} timed out after 300s"
+            self.log(f"{scenario}: ❌ TIMEOUT - {msg}")
+            return {
+                'scenario': scenario,
+                'passed': False,
+                'duration': 300,
+                'log': msg
+            }
+        except Exception as e:
+            msg = f"Test {scenario} failed to execute: {e}"
+            self.log(f"{scenario}: ❌ ERROR - {msg}")
+            return {
+                'scenario': scenario,
+                'passed': False,
+                'duration': 0,
+                'log': msg
+            }
 
     def calculate_benchmarks(self, results, total_time):
         build_name = Path(self.build_path.get()).stem
@@ -208,8 +241,8 @@ class BetaTeam:
         prev = self.prev_results.get(build_name, {})
         prev_time = prev.get('time', 1) if prev and prev.get('time', 0) > 0 else 1
         delta = 'NEW' if not prev else f'{((total_time - prev_time) / prev_time * 100):+.0f}%'
+        self.prev_results[build_name] = current
         result = {build_name: current, 'delta': delta}
-        self.prev_results = result
         return result
 
     def display_results(self, benchmarks):
@@ -222,15 +255,16 @@ class BetaTeam:
                 self.log(f'{build}: {delta} | {passed_count}/{total} passed')
 
     def save_results(self, results):
-        with open('results.json', 'w') as f:
-            json.dump(results, f, indent=2)
+        try:
+            with open('results.json', 'w') as f:
+                json.dump(results, f, indent=2)
+        except IOError as e:
+            self.log(f"Failed to save results: {e}")
 
     def clear_log(self):
         self.results_text.delete(1.0, tk.END)
 
     def open_reports(self):
-        import sys
-        import webbrowser
         reports_path = os.path.abspath('reports')
         if sys.platform == 'win32':
             os.startfile(reports_path)

@@ -1,6 +1,9 @@
 *** Settings ***
 Library    SeleniumLibrary
 
+*** Variables ***
+${BUILD_PATH}    ${EMPTY}
+
 *** Test Cases ***
 Power User Workflow
     Open Application    ${BUILD_PATH}
@@ -8,6 +11,7 @@ Power User Workflow
     Create Complex Project
     Export Data
     Verify Export Success
+    [Teardown]    Close Browser
 
 *** Keywords ***
 Open Application

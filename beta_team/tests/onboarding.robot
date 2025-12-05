@@ -15,5 +15,6 @@ First Time User Onboarding
     Click Element    id=submit
     Page Should Contain    Welcome
     ${end}=    Get Time    epoch
-    Log    Onboarding took ${${end}-${start}} seconds
-    [Teardown]    Close Application
+    ${duration}=    Evaluate    ${end} - ${start}
+    Log    Onboarding took ${duration} seconds
+    [Teardown]    Close Browser
