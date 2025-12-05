@@ -3,7 +3,7 @@ Library    SeleniumLibrary
 
 *** Test Cases ***
 Edge Case Testing
-    Open Application    ${BUILD_PATH}
+    Open Browser    ${BUILD_PATH}    chrome
     Test Invalid Inputs
     Test Large File Upload
     Test Network Disconnect
