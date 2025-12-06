@@ -12,6 +12,7 @@ import json
 import subprocess
 import pandas as pd
 import numpy as np
+import hashlib
 
 # ============================================================================
 # 1. CONFIGURATION AND DATA MODELS
@@ -603,7 +604,9 @@ class BetaTestingTools:
         )
         
         # Simulate test execution with random results
-        np.random.seed(hash(test_suite_id) % 10000)
+        # Use hashlib for deterministic seeding across Python runs
+        seed = int(hashlib.md5(test_suite_id.encode()).hexdigest(), 16) % 10000
+        np.random.seed(seed)
         total_tests = len(suite_config) or np.random.randint(10, 30)
         passed = int(total_tests * np.random.uniform(0.8, 0.95))
         failed = total_tests - passed
