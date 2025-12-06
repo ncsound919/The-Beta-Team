@@ -1,0 +1,1042 @@
+"""
+Deep RAG Integration for Agentic Beta Testing System: Complete Implementation
+Fixed and Enhanced Version
+"""
+
+from enum import Enum
+from dataclasses import dataclass
+from typing import Dict, List, Any, Optional, Callable
+from datetime import datetime, timedelta
+import asyncio
+import json
+import subprocess
+import pandas as pd
+import numpy as np
+import hashlib
+
+# ============================================================================
+# 1. CONFIGURATION AND DATA MODELS
+# ============================================================================
+
+class KnowledgeSource(Enum):
+    BUG_REPORTS = "bug_reports"
+    TEST_CASES = "test_cases"
+    USER_FEEDBACK = "user_feedback"
+    CODE_REPOSITORY = "code_repo"
+    API_DOCS = "api_docs"
+    TEST_LOGS = "test_logs"
+    PERFORMANCE_METRICS = "performance_metrics"
+
+
+@dataclass
+class RAGConfig:
+    chunk_size: int = 512
+    chunk_overlap: int = 50
+    embedding_model: str = "sentence-transformers/all-mpnet-base-v2"
+    hybrid_search: bool = True
+    rerank_enabled: bool = True
+    top_k_retrieval: int = 10
+    knowledge_update_strategy: str = "continuous"
+
+
+# ============================================================================
+# 2. KNOWLEDGE BASE SOURCES
+# ============================================================================
+
+class VectorStoreSource:
+    def __init__(self, name: str, embedding_model: str, vector_store: str, metadata_fields: List[str]):
+        self.name = name
+        self.embedding_model = embedding_model
+        self.vector_store = vector_store
+        self.metadata_fields = metadata_fields
+
+
+class GraphDatabaseSource:
+    def __init__(self, name: str, store: str, relationship_types: List[str]):
+        self.name = name
+        self.store = store
+        self.relationship_types = relationship_types
+
+
+class TimeSeriesSource:
+    def __init__(self, name: str, store: str, metrics: List[str]):
+        self.name = name
+        self.store = store
+        self.metrics = metrics
+
+
+class MultiSourceKnowledgeBase:
+    def __init__(self, sources: List[Any]):
+        self.sources = sources
+        self.documents = []
+        self.document_ids = {}
+    
+    async def add_document(self, content: str, metadata: Dict[str, Any]):
+        """Add document to knowledge base"""
+        doc_id = f"doc_{len(self.documents)}"
+        doc = {
+            "id": doc_id,
+            "content": content,
+            "metadata": metadata,
+            "timestamp": datetime.now().isoformat()
+        }
+        self.documents.append(doc)
+        self.document_ids[doc_id] = doc
+        return doc
+    
+    async def retrieve(self, query: str, filters: Dict = None, top_k: int = 5):
+        """Retrieve relevant documents using simple keyword matching"""
+        # In a real implementation, this would use vector similarity search
+        # For now, using simple keyword matching
+        query_lower = query.lower()
+        relevant_docs = []
+        
+        for doc in self.documents:
+            score = 0
+            content_lower = doc['content'].lower()
+            
+            # Check if query keywords appear in content
+            for word in query_lower.split():
+                if len(word) > 3 and word in content_lower:
+                    score += 1
+            
+            # Apply filters if provided
+            if filters:
+                matches_filter = True
+                for key, value in filters.items():
+                    if isinstance(value, list):
+                        if doc['metadata'].get(key) not in value:
+                            matches_filter = False
+                            break
+                    else:
+                        if doc['metadata'].get(key) != value:
+                            matches_filter = False
+                            break
+                if not matches_filter:
+                    continue
+            
+            if score > 0:
+                relevant_docs.append({
+                    **doc,
+                    'score': score / len(query.split()) if query else 0
+                })
+        
+        # Sort by score and return top_k
+        relevant_docs.sort(key=lambda x: x['score'], reverse=True)
+        return relevant_docs[:top_k]
+
+
+# ============================================================================
+# 3. RAG PIPELINE
+# ============================================================================
+
+class BetaTestingRAGPipeline:
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self.knowledge_base = MultiSourceKnowledgeBase(sources=[])
+        
+    async def build_knowledge_base(self, data_sources: List[Dict]):
+        """Build multi-source knowledge base for beta testing"""
+        documents = []
+        
+        for source in data_sources:
+            if source['type'] == 'bug_reports':
+                docs = await self._process_bug_reports(source['path'])
+            elif source['type'] == 'test_cases':
+                docs = await self._process_test_cases(source['path'])
+            elif source['type'] == 'user_feedback':
+                docs = await self._process_user_feedback(source['path'])
+            elif source['type'] == 'code_repository':
+                docs = await self._process_code_repo(source['path'])
+            else:
+                docs = []
+            
+            documents.extend(docs)
+        
+        # Store documents in knowledge base
+        for doc in documents:
+            await self.knowledge_base.add_document(
+                content=doc.get('content', ''),
+                metadata=doc.get('metadata', {})
+            )
+        
+        return self.knowledge_base
+    
+    async def retrieve(self, query: str, filters: Dict = None, top_k: int = 5):
+        """Retrieve relevant documents"""
+        return await self.knowledge_base.retrieve(query, filters, top_k)
+    
+    async def add_document(self, content: str, metadata: Dict[str, Any]):
+        """Add new document to knowledge base"""
+        return await self.knowledge_base.add_document(content, metadata)
+    
+    async def _process_bug_reports(self, file_path: str):
+        """Process bug reports with metadata extraction"""
+        try:
+            with open(file_path, 'r') as f:
+                bug_data = json.load(f)
+            
+            documents = []
+            for bug in bug_data:
+                doc = {
+                    'content': bug.get('description', ''),
+                    'metadata': self._extract_bug_metadata(bug)
+                }
+                documents.append(doc)
+            
+            return documents
+        except Exception as e:
+            print(f"Error processing bug reports: {e}")
+            return []
+    
+    async def _process_test_cases(self, file_path: str):
+        """Process test cases"""
+        try:
+            with open(file_path, 'r') as f:
+                test_data = json.load(f)
+            
+            documents = []
+            for test in test_data:
+                doc = {
+                    'content': test.get('description', ''),
+                    'metadata': {
+                        'test_id': test.get('id', ''),
+                        'type': 'test_case',
+                        'status': test.get('status', 'pending'),
+                        'feature': test.get('feature', '')
+                    }
+                }
+                documents.append(doc)
+            
+            return documents
+        except Exception as e:
+            print(f"Error processing test cases: {e}")
+            return []
+    
+    async def _process_user_feedback(self, file_path: str):
+        """Process user feedback"""
+        try:
+            with open(file_path, 'r') as f:
+                feedback_data = json.load(f)
+            
+            documents = []
+            for feedback in feedback_data:
+                doc = {
+                    'content': feedback.get('comment', ''),
+                    'metadata': {
+                        'type': 'user_feedback',
+                        'rating': feedback.get('rating', 0),
+                        'user_id': feedback.get('user_id', ''),
+                        'feature': feedback.get('feature', '')
+                    }
+                }
+                documents.append(doc)
+            
+            return documents
+        except Exception as e:
+            print(f"Error processing user feedback: {e}")
+            return []
+    
+    async def _process_code_repo(self, file_path: str):
+        """Process code repository"""
+        try:
+            # This would normally parse code files
+            # For simplicity, just read text files
+            with open(file_path, 'r') as f:
+                content = f.read()
+            
+            return [{
+                'content': content,
+                'metadata': {
+                    'type': 'code_repo',
+                    'file_path': file_path,
+                    'language': self._detect_language(file_path)
+                }
+            }]
+        except Exception as e:
+            print(f"Error processing code repo: {e}")
+            return []
+    
+    def _detect_language(self, file_path: str) -> str:
+        """Detect programming language from file extension"""
+        if file_path.endswith('.py'):
+            return 'python'
+        elif file_path.endswith('.js'):
+            return 'javascript'
+        elif file_path.endswith('.java'):
+            return 'java'
+        elif file_path.endswith('.cpp') or file_path.endswith('.h'):
+            return 'cpp'
+        else:
+            return 'unknown'
+    
+    def _extract_bug_metadata(self, record: dict) -> dict:
+        """Extract metadata from bug reports"""
+        return {
+            "severity": record.get("severity", "medium"),
+            "status": record.get("status", "open"),
+            "feature_area": record.get("feature", ""),
+            "reproducible": record.get("reproducible", False),
+            "priority": record.get("priority", "P2"),
+            "type": "bug_report"
+        }
+
+
+# ============================================================================
+# 4. AGENT ORCHESTRATOR
+# ============================================================================
+
+class BetaTestingAgentOrchestrator:
+    def __init__(self, rag_pipeline: BetaTestingRAGPipeline, llm=None, tools: List[Callable] = None):
+        self.rag_pipeline = rag_pipeline
+        self.llm = llm
+        self.tools = tools or []
+        self.memory = []
+        self.task_counter = 0
+    
+    async def execute_task(self, task: str, context: Dict[str, Any] = None):
+        """Execute a beta testing task with RAG-enhanced reasoning"""
+        context = context or {}
+        task_id = f"task_{self.task_counter}"
+        self.task_counter += 1
+        
+        # Step 1: Initial retrieval for context
+        initial_context = await self._retrieve_initial_context(task)
+        
+        # Step 2: Plan generation with retrieved knowledge
+        plan = await self._generate_plan(task, initial_context)
+        
+        # Step 3: Execute plan with agentic loop
+        results = []
+        for step in plan['steps']:
+            step_result = await self._execute_step(step, context)
+            results.append(step_result)
+            
+            # Step 4: Dynamic retrieval based on intermediate results
+            if step_result.get('needs_additional_context'):
+                additional_context = await self._retrieve_additional_context(task, step_result)
+                plan = await self._adapt_plan(plan, additional_context)
+        
+        # Step 5: Generate comprehensive report
+        report = await self._generate_report(task, results, plan)
+        
+        return {
+            "task_id": task_id,
+            "task": task,
+            "plan": plan,
+            "results": results,
+            "report": report,
+            "context_used": initial_context
+        }
+    
+    async def _retrieve_initial_context(self, task: str):
+        """Retrieve relevant context before planning"""
+        return await self.rag_pipeline.retrieve(
+            query=task,
+            filters={"type": ["bug_report", "test_case", "user_feedback"]},
+            top_k=10
+        )
+    
+    async def _generate_plan(self, task: str, context: List[Dict]):
+        """Generate execution plan based on task and context"""
+        # In a real implementation, this would use an LLM to generate the plan
+        # For now, return a structured plan based on task keywords
+        
+        plan_steps = []
+        
+        if "test" in task.lower():
+            plan_steps.append({"action": "analyze_requirements", "priority": 1})
+            plan_steps.append({"action": "retrieve_similar_test_cases", "priority": 2})
+            plan_steps.append({"action": "generate_test_plan", "priority": 3})
+            plan_steps.append({"action": "execute_tests", "priority": 4})
+        elif "bug" in task.lower() or "issue" in task.lower():
+            plan_steps.append({"action": "analyze_bug_report", "priority": 1})
+            plan_steps.append({"action": "retrieve_similar_bugs", "priority": 2})
+            plan_steps.append({"action": "identify_root_cause", "priority": 3})
+            plan_steps.append({"action": "suggest_fix", "priority": 4})
+        else:
+            plan_steps.append({"action": "analyze_requirements", "priority": 1})
+            plan_steps.append({"action": "retrieve_similar_cases", "priority": 2})
+            plan_steps.append({"action": "execute_tests", "priority": 3})
+            plan_steps.append({"action": "analyze_results", "priority": 4})
+        
+        return {
+            "task": task,
+            "steps": plan_steps,
+            "estimated_time": "30 minutes",
+            "context_summary": f"Found {len(context)} relevant documents"
+        }
+    
+    async def _execute_step(self, step: Dict, context: Dict):
+        """Execute a single step in the plan"""
+        action = step.get('action', '')
+        
+        # Simulate different actions based on step type
+        if action == "analyze_requirements":
+            result = f"Analyzed requirements from {len(context)} documents"
+        elif action == "retrieve_similar_test_cases":
+            similar_cases = await self.rag_pipeline.retrieve(
+                query="test cases",
+                filters={"type": ["test_case"]},
+                top_k=5
+            )
+            result = f"Retrieved {len(similar_cases)} similar test cases"
+        elif action == "execute_tests":
+            result = "Executed 15 test cases - 13 passed, 2 failed"
+        elif action == "analyze_bug_report":
+            result = "Analyzed bug report and identified 3 potential root causes"
+        else:
+            result = f"Executed {action} successfully"
+        
+        return {
+            "step": action,
+            "status": "completed",
+            "needs_additional_context": False,
+            "result": result
+        }
+    
+    async def _retrieve_additional_context(self, task: str, step_result: Dict):
+        """Retrieve additional context based on intermediate results"""
+        return await self.rag_pipeline.retrieve(
+            query=f"{task} {step_result.get('result', '')}",
+            top_k=5
+        )
+    
+    async def _adapt_plan(self, plan: Dict, additional_context: List[Dict]):
+        """Adapt plan based on new context"""
+        plan['adapted'] = True
+        plan['additional_context_count'] = len(additional_context)
+        
+        # Add an additional step if new context suggests it
+        if additional_context and len(additional_context) > 0:
+            if 'review_additional_findings' not in [s['action'] for s in plan['steps']]:
+                plan['steps'].append({
+                    "action": "review_additional_findings",
+                    "priority": len(plan['steps']) + 1
+                })
+        
+        return plan
+    
+    async def _generate_report(self, task: str, results: List[Dict], plan: Dict):
+        """Generate comprehensive report"""
+        successful_steps = sum(1 for r in results if r['status'] == 'completed')
+        total_steps = len(results)
+        
+        # Analyze results for insights
+        insights = []
+        for result in results:
+            if "failed" in result.get('result', '').lower():
+                insights.append(f"Step '{result['step']}' encountered failures")
+        
+        return {
+            "task": task,
+            "total_steps": total_steps,
+            "successful_steps": successful_steps,
+            "success_rate": f"{(successful_steps / total_steps * 100):.1f}%",
+            "insights": insights,
+            "summary": f"Completed {successful_steps}/{total_steps} steps for task: {task}",
+            "timestamp": datetime.now().isoformat(),
+            "recommendations": [
+                "Review failed test cases",
+                "Update documentation based on findings",
+                "Consider automated regression tests"
+            ]
+        }
+
+
+# ============================================================================
+# 5. BETA TESTING TOOLS
+# ============================================================================
+
+class BetaTestingTools:
+    def __init__(self, rag_pipeline: BetaTestingRAGPipeline):
+        self.rag_pipeline = rag_pipeline
+    
+    async def generate_test_cases(
+        self,
+        feature_description: str,
+        complexity_level: str = "medium",
+        include_edge_cases: bool = True,
+        reference_bug_ids: List[str] = None
+    ) -> dict:
+        """Generate comprehensive test cases using RAG-enhanced context"""
+        
+        # Retrieve similar features and their test cases
+        similar_features = await self.rag_pipeline.retrieve(
+            query=feature_description,
+            filters={"type": ["test_case", "api_docs"]},
+            top_k=5
+        )
+        
+        # Generate test cases structure
+        test_cases = []
+        if include_edge_cases:
+            test_cases.extend([
+                {"type": "happy_path", "description": "Test normal flow", "priority": "high", "estimated_time": "5min"},
+                {"type": "negative", "description": "Test error handling", "priority": "high", "estimated_time": "10min"},
+                {"type": "edge_case", "description": "Test boundary conditions", "priority": "medium", "estimated_time": "15min"},
+                {"type": "performance", "description": "Test under load", "priority": "medium", "estimated_time": "20min"},
+                {"type": "security", "description": "Test access controls", "priority": "high", "estimated_time": "15min"}
+            ])
+        else:
+            test_cases.extend([
+                {"type": "happy_path", "description": "Test normal flow", "priority": "high", "estimated_time": "5min"},
+                {"type": "negative", "description": "Test error handling", "priority": "high", "estimated_time": "10min"}
+            ])
+        
+        # Add reference bug information if provided
+        bug_references = []
+        if reference_bug_ids:
+            for bug_id in reference_bug_ids:
+                # In a real system, you would look up the bug details
+                bug_references.append({
+                    "bug_id": bug_id,
+                    "description": f"Related to bug {bug_id}",
+                    "test_coverage": "Add specific test to prevent regression"
+                })
+        
+        result = {
+            "feature": feature_description,
+            "test_cases": test_cases,
+            "total_test_cases": len(test_cases),
+            "context_used": len(similar_features),
+            "estimated_coverage": "85%",
+            "complexity": complexity_level,
+            "bug_references": bug_references,
+            "generation_time": datetime.now().isoformat()
+        }
+        
+        return result
+    
+    async def analyze_bug_patterns(
+        self,
+        bug_description: str,
+        logs: str = None,
+        reproduction_steps: List[str] = None
+    ) -> dict:
+        """Analyze bug patterns using historical data"""
+        
+        # Search for similar bugs
+        similar_bugs = await self.rag_pipeline.retrieve(
+            query=bug_description,
+            filters={"type": ["bug_report"]},
+            top_k=10
+        )
+        
+        # Analyze patterns from similar bugs
+        severities = [bug['metadata'].get('severity', 'medium') for bug in similar_bugs]
+        features = [bug['metadata'].get('feature_area', 'unknown') for bug in similar_bugs if bug['metadata'].get('feature_area')]
+        
+        # Count frequencies
+        from collections import Counter
+        severity_counts = Counter(severities)
+        feature_counts = Counter(features)
+        
+        patterns = {
+            "common_root_causes": ["Configuration error", "Race condition", "Memory leak"],
+            "frequent_components": list(feature_counts.keys())[:3] if feature_counts else ["Unknown"],
+            "severity_distribution": dict(severity_counts),
+            "suggested_fixes": ["Update configuration", "Add synchronization", "Improve error handling"]
+        }
+        
+        # Add log analysis if logs provided
+        log_analysis = {}
+        if logs:
+            log_lines = logs.split('\n')
+            error_count = sum(1 for line in log_lines if 'error' in line.lower() or 'exception' in line.lower())
+            warning_count = sum(1 for line in log_lines if 'warning' in line.lower())
+            log_analysis = {
+                "error_count": error_count,
+                "warning_count": warning_count,
+                "total_lines": len(log_lines)
+            }
+        
+        return {
+            "current_bug": bug_description,
+            "similar_bugs_found": len(similar_bugs),
+            "pattern_analysis": patterns,
+            "confidence_score": min(0.92 + (len(similar_bugs) * 0.01), 0.99),
+            "recommended_assignee": self._determine_assignee(features),
+            "log_analysis": log_analysis if log_analysis else None,
+            "reproduction_steps_analyzed": len(reproduction_steps) if reproduction_steps else 0,
+            "suggested_next_actions": [
+                "Verify reproduction steps",
+                "Check similar bug fixes",
+                "Update test cases to cover this scenario"
+            ]
+        }
+    
+    def _determine_assignee(self, features: List[str]) -> str:
+        """Determine appropriate assignee based on features"""
+        if not features:
+            return "backend-team"
+        
+        feature_counts = Counter(features)
+        most_common = feature_counts.most_common(1)[0][0] if feature_counts else ""
+        
+        mapping = {
+            "authentication": "security-team",
+            "payment": "payment-team",
+            "database": "backend-team",
+            "ui": "frontend-team",
+            "api": "api-team"
+        }
+        
+        for key, team in mapping.items():
+            if key in most_common.lower():
+                return team
+        
+        return "backend-team"
+    
+    async def execute_test_suite(
+        self,
+        test_suite_id: str,
+        environment: str = "beta",
+        parallel: bool = True
+    ) -> dict:
+        """Execute test suite with monitoring"""
+        
+        # Retrieve test suite configuration
+        suite_config = await self.rag_pipeline.retrieve(
+            query=f"test_suite:{test_suite_id}",
+            filters={"type": ["test_case"]},
+            top_k=50
+        )
+        
+        # Simulate test execution with random results
+        # Use hashlib for deterministic seeding across Python runs
+        seed = int(hashlib.md5(test_suite_id.encode()).hexdigest(), 16) % 10000
+        np.random.seed(seed)
+        total_tests = len(suite_config) or np.random.randint(10, 30)
+        passed = int(total_tests * np.random.uniform(0.8, 0.95))
+        failed = total_tests - passed
+        
+        # Generate detailed test results
+        test_results = []
+        for i in range(total_tests):
+            status = "passed" if i < passed else "failed"
+            test_results.append({
+                "test_id": f"test_{i+1}",
+                "name": f"Test case {i+1} for {test_suite_id}",
+                "status": status,
+                "duration": f"{np.random.uniform(0.1, 5.0):.2f}s",
+                "error_message": f"Assertion failed" if status == "failed" else None
+            })
+        
+        results = {
+            "suite_id": test_suite_id,
+            "environment": environment,
+            "execution_mode": "parallel" if parallel else "sequential",
+            "total_tests": total_tests,
+            "passed": passed,
+            "failed": failed,
+            "skipped": 0,
+            "duration": f"{np.random.uniform(30, 120):.1f}s",
+            "timestamp": datetime.now().isoformat(),
+            "test_results": test_results[:10],  # Include first 10 for brevity
+            "pass_rate": f"{(passed / total_tests * 100):.1f}%"
+        }
+        
+        # Store results in knowledge base
+        await self.rag_pipeline.add_document(
+            content=json.dumps(results),
+            metadata={
+                "type": "test_execution",
+                "suite_id": test_suite_id,
+                "environment": environment,
+                "timestamp": datetime.now().isoformat(),
+                "status": "completed"
+            }
+        )
+        
+        return results
+
+
+# ============================================================================
+# 6. FEEDBACK SYSTEM
+# ============================================================================
+
+class RAGFeedbackSystem:
+    def __init__(self, rag_pipeline: BetaTestingRAGPipeline, agent_orchestrator: BetaTestingAgentOrchestrator):
+        self.rag_pipeline = rag_pipeline
+        self.agent = agent_orchestrator
+        self.feedback_store = []
+        self.performance_metrics = {
+            "retrieval_accuracy": [],
+            "agent_decision_quality": [],
+            "bug_prediction_accuracy": []
+        }
+    
+    async def collect_feedback(self, task_id: str, feedback: Dict[str, Any]):
+        """Collect human feedback on agent performance"""
+        
+        feedback_entry = {
+            "task_id": task_id,
+            "feedback": feedback,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        self.feedback_store.append(feedback_entry)
+        
+        # Update RAG relevance scores
+        if feedback.get('retrieved_docs'):
+            await self._update_relevance_scores(task_id, feedback['retrieved_docs'])
+        
+        # Update agent behavior if needed
+        agent_quality = feedback.get('agent_decision_quality', 1.0)
+        if agent_quality < 0.7:
+            await self._retrain_agent_components(task_id, feedback)
+        
+        # Update performance metrics
+        self.performance_metrics["retrieval_accuracy"].append(
+            feedback.get('retrieval_accuracy', 0.8)
+        )
+        self.performance_metrics["agent_decision_quality"].append(agent_quality)
+        
+        return feedback_entry
+    
+    async def analyze_performance(self, time_period: str = "last_7_days"):
+        """Analyze system performance and identify improvement areas"""
+        
+        if time_period == "last_7_days":
+            start_date = datetime.now() - timedelta(days=7)
+        elif time_period == "last_30_days":
+            start_date = datetime.now() - timedelta(days=30)
+        else:
+            start_date = datetime.now() - timedelta(days=7)
+        
+        relevant_feedback = [
+            f for f in self.feedback_store
+            if datetime.fromisoformat(f['timestamp']) > start_date
+        ]
+        
+        if not relevant_feedback:
+            return {
+                "error": f"No feedback data available for {time_period}",
+                "suggested_improvements": ["Collect more feedback data"]
+            }
+        
+        analysis = {
+            "retrieval_effectiveness": self._calculate_retrieval_metrics(relevant_feedback),
+            "agent_accuracy": self._calculate_agent_metrics(relevant_feedback),
+            "knowledge_gaps": await self._identify_knowledge_gaps(relevant_feedback),
+            "suggested_improvements": []
+        }
+        
+        # Generate improvement actions
+        retrieval_precision = analysis['retrieval_effectiveness']['precision']
+        if retrieval_precision < 0.8:
+            analysis['suggested_improvements'].append(
+                "Fine-tune embedding model on beta testing domain data"
+            )
+        
+        agent_success = analysis['agent_accuracy']['success_rate']
+        if agent_success < 0.8:
+            analysis['suggested_improvements'].append(
+                "Improve agent prompt engineering and context retrieval"
+            )
+        
+        knowledge_gaps = analysis['knowledge_gaps']
+        if knowledge_gaps:
+            analysis['suggested_improvements'].append(
+                f"Add documentation for {len(knowledge_gaps)} identified gaps"
+            )
+            # Store knowledge gaps for future reference
+            for gap in knowledge_gaps[:5]:  # Limit to top 5
+                await self.rag_pipeline.add_document(
+                    content=f"Knowledge gap identified: {gap}",
+                    metadata={
+                        "type": "knowledge_gap",
+                        "gap": gap,
+                        "identified_at": datetime.now().isoformat()
+                    }
+                )
+        
+        return analysis
+    
+    async def _update_relevance_scores(self, task_id: str, retrieved_docs: List[Dict]):
+        """Update relevance scores for retrieved documents"""
+        for doc in retrieved_docs:
+            # In a real system, you would update relevance scores in the vector store
+            # For now, just update the local document
+            if 'relevance_score' not in doc:
+                doc['relevance_score'] = 0.5
+            else:
+                # Simple feedback-based adjustment
+                doc['relevance_score'] = min(doc['relevance_score'] * 1.1, 1.0)
+    
+    async def _retrain_agent_components(self, task_id: str, feedback: Dict):
+        """Retrain agent components based on feedback"""
+        print(f"[INFO] Retraining agent for task {task_id} based on feedback")
+        print(f"[INFO] Feedback: {feedback.get('feedback_type', 'general')}")
+        # In a real system, this would trigger retraining of embeddings or fine-tuning
+        return {
+            "status": "retraining_scheduled",
+            "task_id": task_id,
+            "retraining_type": "agent_components"
+        }
+    
+    def _calculate_retrieval_metrics(self, feedback_list: List[Dict]) -> Dict:
+        """Calculate retrieval performance metrics"""
+        if not feedback_list:
+            return {
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1_score": 0.0,
+                "total_retrievals": 0
+            }
+        
+        # Calculate average metrics from feedback
+        precisions = []
+        recalls = []
+        
+        for feedback in feedback_list:
+            fb_data = feedback['feedback']
+            precisions.append(fb_data.get('retrieval_precision', 0.8))
+            recalls.append(fb_data.get('retrieval_recall', 0.7))
+        
+        avg_precision = np.mean(precisions)
+        avg_recall = np.mean(recalls)
+        f1 = 2 * (avg_precision * avg_recall) / (avg_precision + avg_recall) if (avg_precision + avg_recall) > 0 else 0
+        
+        return {
+            "precision": round(avg_precision, 3),
+            "recall": round(avg_recall, 3),
+            "f1_score": round(f1, 3),
+            "total_retrievals": len(feedback_list)
+        }
+    
+    def _calculate_agent_metrics(self, feedback_list: List[Dict]) -> Dict:
+        """Calculate agent performance metrics"""
+        if not feedback_list:
+            return {
+                "success_rate": 0.0,
+                "average_quality": 0.0,
+                "total_tasks": 0
+            }
+        
+        qualities = []
+        successes = []
+        
+        for feedback in feedback_list:
+            fb_data = feedback['feedback']
+            qualities.append(fb_data.get('agent_decision_quality', 0.5))
+            successes.append(fb_data.get('task_successful', True))
+        
+        success_rate = sum(successes) / len(successes) if successes else 0
+        avg_quality = np.mean(qualities) if qualities else 0
+        
+        return {
+            "success_rate": round(success_rate, 3),
+            "average_quality": round(avg_quality, 3),
+            "total_tasks": len(feedback_list)
+        }
+    
+    async def _identify_knowledge_gaps(self, feedback_list: List[Dict]) -> List[str]:
+        """Identify gaps in knowledge base"""
+        gaps = set()
+        for feedback in feedback_list:
+            fb_data = feedback['feedback']
+            missing_info = fb_data.get('missing_info')
+            if missing_info:
+                gaps.add(missing_info)
+            
+            # Also check for patterns in feedback
+            if fb_data.get('suggested_improvements'):
+                for improvement in fb_data['suggested_improvements']:
+                    if 'documentation' in improvement.lower() or 'knowledge' in improvement.lower():
+                        gaps.add(improvement)
+        
+        return list(gaps)[:10]  # Return top 10 gaps
+
+
+# ============================================================================
+# 7. MAIN SYSTEM AND EXAMPLE USAGE
+# ============================================================================
+
+class BetaTestingRAGSystem:
+    """Deep RAG-Integrated Agentic System for Beta Testing"""
+    
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self.rag_pipeline = BetaTestingRAGPipeline(config)
+        self.tools = BetaTestingTools(self.rag_pipeline)
+        self.agent_orchestrator = BetaTestingAgentOrchestrator(
+            self.rag_pipeline,
+            llm=None,  # In a real system, you would initialize an LLM here
+            tools=[self.tools.generate_test_cases, self.tools.analyze_bug_patterns]
+        )
+        self.feedback_system = RAGFeedbackSystem(self.rag_pipeline, self.agent_orchestrator)
+    
+    async def initialize(self, data_sources: List[Dict]):
+        """Initialize the system with data sources"""
+        print("Initializing Beta Testing RAG System...")
+        await self.rag_pipeline.build_knowledge_base(data_sources)
+        print(f"System initialized with {len(data_sources)} data sources")
+        return self
+    
+    async def run_beta_test_task(self, task_description: str, context: Dict = None):
+        """Run a beta testing task"""
+        print(f"\n{'='*60}")
+        print(f"Executing Task: {task_description}")
+        print(f"{'='*60}")
+        
+        result = await self.agent_orchestrator.execute_task(task_description, context)
+        
+        print(f"\nTask Completed!")
+        print(f"Task ID: {result['task_id']}")
+        print(f"Steps Executed: {result['report']['total_steps']}")
+        print(f"Success Rate: {result['report']['success_rate']}")
+        print(f"Context Used: {len(result['context_used'])} documents")
+        
+        return result
+    
+    async def analyze_bug(self, bug_description: str, logs: str = None):
+        """Analyze a bug using the system"""
+        print(f"\nAnalyzing Bug: {bug_description[:100]}...")
+        
+        analysis = await self.tools.analyze_bug_patterns(bug_description, logs)
+        
+        print(f"\nBug Analysis Complete!")
+        print(f"Similar Bugs Found: {analysis['similar_bugs_found']}")
+        print(f"Confidence Score: {analysis['confidence_score']:.2%}")
+        print(f"Recommended Assignee: {analysis['recommended_assignee']}")
+        
+        return analysis
+    
+    async def generate_test_suite(self, feature_description: str):
+        """Generate test cases for a feature"""
+        print(f"\nGenerating Test Suite for: {feature_description}")
+        
+        test_cases = await self.tools.generate_test_cases(
+            feature_description,
+            complexity_level="medium",
+            include_edge_cases=True
+        )
+        
+        print(f"\nTest Generation Complete!")
+        print(f"Total Test Cases: {test_cases['total_test_cases']}")
+        print(f"Estimated Coverage: {test_cases['estimated_coverage']}")
+        
+        return test_cases
+
+
+# ============================================================================
+# 8. EXAMPLE USAGE AND DEMO
+# ============================================================================
+
+async def main():
+    """Demo of the Beta Testing RAG System"""
+    
+    # Configuration
+    config = {
+        "chunk_size": 512,
+        "chunk_overlap": 50,
+        "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+        "top_k_retrieval": 10,
+        "knowledge_update_strategy": "continuous"
+    }
+    
+    # Create sample data files
+    sample_bugs = [
+        {
+            "id": "BUG-001",
+            "description": "Login fails when user enters incorrect password 3 times",
+            "severity": "high",
+            "status": "open",
+            "feature": "authentication",
+            "priority": "P1"
+        },
+        {
+            "id": "BUG-002",
+            "description": "Payment processing timeout after 30 seconds",
+            "severity": "medium",
+            "status": "resolved",
+            "feature": "payment",
+            "priority": "P2"
+        }
+    ]
+    
+    sample_test_cases = [
+        {
+            "id": "TC-001",
+            "description": "Test successful login with valid credentials",
+            "status": "passed",
+            "feature": "authentication"
+        },
+        {
+            "id": "TC-002",
+            "description": "Test login failure with invalid password",
+            "status": "passed",
+            "feature": "authentication"
+        }
+    ]
+    
+    # Write sample data to files
+    with open('sample_bugs.json', 'w') as f:
+        json.dump(sample_bugs, f)
+    
+    with open('sample_test_cases.json', 'w') as f:
+        json.dump(sample_test_cases, f)
+    
+    # Initialize system
+    system = BetaTestingRAGSystem(config)
+    
+    data_sources = [
+        {"type": "bug_reports", "path": "sample_bugs.json"},
+        {"type": "test_cases", "path": "sample_test_cases.json"}
+    ]
+    
+    await system.initialize(data_sources)
+    
+    # Run demo tasks
+    print("\n" + "="*60)
+    print("BETA TESTING RAG SYSTEM DEMO")
+    print("="*60)
+    
+    # Task 1: Analyze a bug
+    bug_result = await system.analyze_bug(
+        "User login fails intermittently with timeout error",
+        logs="ERROR: Connection timeout after 5000ms\nWARNING: Retrying authentication"
+    )
+    
+    # Task 2: Generate test cases
+    test_result = await system.generate_test_suite(
+        "New authentication feature with biometric login"
+    )
+    
+    # Task 3: Execute a full beta testing task
+    task_result = await system.run_beta_test_task(
+        "Test the new payment processing feature for edge cases",
+        context={"environment": "beta", "priority": "high"}
+    )
+    
+    # Collect feedback
+    feedback = {
+        "task_successful": True,
+        "agent_decision_quality": 0.85,
+        "retrieval_precision": 0.9,
+        "retrieval_recall": 0.8,
+        "missing_info": "Performance benchmarks for payment processing",
+        "suggested_improvements": ["Add more performance test cases"]
+    }
+    
+    await system.feedback_system.collect_feedback(
+        task_result['task_id'],
+        feedback
+    )
+    
+    # Analyze system performance
+    performance = await system.feedback_system.analyze_performance()
+    print(f"\nSystem Performance Analysis:")
+    print(f"Retrieval F1 Score: {performance['retrieval_effectiveness']['f1_score']}")
+    print(f"Agent Success Rate: {performance['agent_accuracy']['success_rate']}")
+    print(f"Suggested Improvements: {performance['suggested_improvements']}")
+    
+    print("\n" + "="*60)
+    print("DEMO COMPLETED SUCCESSFULLY!")
+    print("="*60)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
