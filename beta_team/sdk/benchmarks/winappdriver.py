@@ -7,7 +7,7 @@ using WinAppDriver for UI automation and metrics collection.
 
 import time
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 
 @dataclass

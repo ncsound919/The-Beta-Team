@@ -1,0 +1,49 @@
+[project]
+name = "beta-team"
+version = "2.0.0"
+description = "Agentic Software Beta Testing framework"
+requires-python = ">=3.10"
+dependencies = [
+    "robotframework>=6.0",
+    "robotframework-seleniumlibrary>=6.0",
+    "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+web = ["playwright>=1.40", "selenium>=4.0"]
+games = ["airtest>=1.3"]
+analytics = ["psutil>=5.9"]
+dev = ["pytest>=7.0", "pytest-cov>=4.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["beta_team/sdk/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "benchmark: marks tests that exercise the BenchmarkRunner",
+    "analytics: marks tests that exercise analytics components",
+    "integration: marks integration tests requiring external services",
+]
+
+[tool.coverage.run]
+source = ["beta_team/sdk"]
+omit = ["beta_team/sdk/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["beta_team*"]
