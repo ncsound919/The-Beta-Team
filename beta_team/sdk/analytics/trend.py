@@ -218,7 +218,11 @@ class TrendAnalyzer:
         slope = _linear_trend(values)
         first = values[0]
         last = values[-1]
-        change_pct = ((last - first) / first * 100) if first != 0 else 0.0
+        if first == 0 and last == 0:
+            change_pct = 0.0
+        else:
+            denom = first if first != 0 else last
+            change_pct = (last - first) / denom * 100
         smoothed = _moving_average(values, self.smoothing_window)
 
         # Determine if improvement or degradation
