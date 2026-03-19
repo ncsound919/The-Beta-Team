@@ -10,6 +10,7 @@ Covers:
 - Edge cases (empty data, single snapshot, zero values)
 """
 
+import math
 import pytest
 
 from beta_team.sdk.analytics.trend import (
@@ -186,14 +187,11 @@ class TestRegressionDetection:
             az.add_snapshot(snap)
         report = az.analyze("avg_response_time_ms")
         assert report.regressed
+        assert math.isinf(report.change_pct)
+        assert report.change_pct > 0
 
     def test_crash_rate_regression_from_zero_baseline(self):
-        """crash_rate going from 0 to non-zero must be detected as a regression.
-
-        This validates the fix for the zero-baseline edge case: when first==0,
-        the denominator falls back to the last value so change_pct is still
-        meaningful and can exceed the threshold.
-        """
+        """crash_rate going from 0 to non-zero must be detected as a regression."""
         az = TrendAnalyzer(regression_threshold_pct=10.0)
         for snap in [
             RunSnapshot(run_id="r1", crash_rate=0.0),
@@ -205,6 +203,8 @@ class TestRegressionDetection:
         assert report.regressed, (
             "crash_rate going from 0 to 1 should be flagged as a regression"
         )
+        assert math.isinf(report.change_pct)
+        assert report.change_pct > 0
 
     def test_flaky_rate_regression_from_zero_baseline(self):
         """flaky_rate going from 0 to non-zero must be detected as a regression."""
@@ -219,6 +219,8 @@ class TestRegressionDetection:
         assert report.regressed, (
             "flaky_rate going from 0 to 0.5 should be flagged as a regression"
         )
+        assert math.isinf(report.change_pct)
+        assert report.change_pct > 0
 
     def test_response_time_no_regression_small_increase(self):
         az = TrendAnalyzer(regression_threshold_pct=20.0)
