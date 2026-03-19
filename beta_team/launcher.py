@@ -252,7 +252,9 @@ class BetaTeam:
         prev = self.prev_results.get(build_name, {})
         if prev:
             # Prefer normalized mean_time if available; fall back to total time for older entries
-            prev_mean_time = prev.get('mean_time', prev.get('time'))
+            prev_mean_time = prev.get('mean_time') or (
+                prev['time'] / max(prev.get('repeats', 1), 1) if 'time' in prev else None
+            )
             if prev_mean_time and prev_mean_time > 0:
                 delta_percent = ((mean_time_per_run - prev_mean_time) / prev_mean_time) * 100
                 current['delta'] = f'{delta_percent:+.0f}%'
