@@ -47,7 +47,9 @@ Overlong Input Truncated Or Rejected
     [Tags]    edgecase    validation    negative
     Open Application    ${BUILD_PATH}
     ${field_length}=    Evaluate    ${MAX_FIELD_LENGTH} + 1
-    ${long_text}=    Generate Random String    ${field_length}    [LETTERS]
+    ${local_part_length}=    Evaluate    ${field_length} - len('@x.com')
+    ${local_part}=    Generate Random String    ${local_part_length}    [LETTERS]
+    ${long_text}=    Set Variable    ${local_part}@x.com
     Input Text    id=email    ${long_text}
     Click Element    id=submit
     Page Should Not Contain    Welcome
