@@ -190,7 +190,7 @@ class BenchmarkRunner:
     def run(
         self,
         name: str,
-        benchmark_fn: Callable[[], float],
+        benchmark_fn: Callable[[], Optional[float]],
         iterations: int = 10,
         warmup: int = 2,
         delay_s: float = 0.0,
