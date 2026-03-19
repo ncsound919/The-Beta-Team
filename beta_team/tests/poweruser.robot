@@ -29,7 +29,7 @@ Power User Login Succeeds
     Input Text    id=poweruser    ${POWER_USER_EMAIL}
     Click Element    id=advanced
     Page Should Contain    Dashboard
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 Create Complex Project
     [Documentation]    Verify that a power user can create a project with multiple
