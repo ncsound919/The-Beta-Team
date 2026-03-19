@@ -39,7 +39,7 @@ SQL Injection Attempt Handled Safely
     Click Element    id=submit
     Page Should Not Contain    SQL
     Page Should Not Contain    syntax error
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Beta Team Test Teardown    AND    Close Application
 
 Overlong Input Truncated Or Rejected
     [Documentation]    Fields should reject or gracefully truncate inputs exceeding
@@ -53,7 +53,7 @@ Overlong Input Truncated Or Rejected
     Input Text    id=email    ${long_text}
     Click Element    id=submit
     Page Should Not Contain    Welcome
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Beta Team Test Teardown    AND    Close Application
 
 Large File Upload Handled
     [Documentation]    Uploading a large file should either succeed or show a
@@ -62,7 +62,7 @@ Large File Upload Handled
     Open Application    ${BUILD_PATH}
     Log Test Metrics    large_file_upload_mb    ${LARGE_FILE_MB}
     Log    Large file upload edge-case placeholder — implement with actual file chooser
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Beta Team Test Teardown    AND    Close Application
 
 Network Disconnect Recovery
     [Documentation]    Simulate a network interruption and verify the app shows
