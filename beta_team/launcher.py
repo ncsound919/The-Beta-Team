@@ -267,8 +267,6 @@ class BetaTeam:
         build_name = Path(self.build_path.get()).stem
         data = benchmarks.get(build_name, {})
         if isinstance(data, dict):
-            passed_count = len([r for r in data.get('results', []) if r.get('passed')])
-            total_count = len(data.get('results', []))
             delta = data.get('delta', 'N/A')
             pass_rate = data.get('pass_rate', 'N/A')
             stats = data.get('stats', {})
