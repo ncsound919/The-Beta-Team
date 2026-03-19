@@ -179,6 +179,14 @@ class TestRegressionDetection:
         report = az.analyze("avg_response_time_ms")
         assert report.regressed
 
+    def test_response_time_regression_from_zero_baseline(self):
+        """Regression should be detected when baseline is 0 and later values become non-zero."""
+        az = TrendAnalyzer(regression_threshold_pct=10.0)
+        for snap in _make_snapshots([90]*4, response_times=[0, 0, 0, 100]):
+            az.add_snapshot(snap)
+        report = az.analyze("avg_response_time_ms")
+        assert report.regressed
+
     def test_response_time_no_regression_small_increase(self):
         az = TrendAnalyzer(regression_threshold_pct=20.0)
         for snap in _make_snapshots([90]*4, response_times=[100, 105, 108, 112]):  # +12 %
