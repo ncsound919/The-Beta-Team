@@ -220,9 +220,10 @@ class TrendAnalyzer:
         last = values[-1]
         if first == 0 and last == 0:
             change_pct = 0.0
+        elif first == 0:
+            change_pct = math.copysign(float("inf"), last)
         else:
-            denom = first if first != 0 else last
-            change_pct = (last - first) / denom * 100
+            change_pct = (last - first) / first * 100
         smoothed = _moving_average(values, self.smoothing_window)
 
         # Determine if improvement or degradation
