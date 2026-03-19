@@ -3,6 +3,7 @@
 from beta_team.sdk.analytics.metrics import MetricsCollector, RealTimeMetrics
 from beta_team.sdk.analytics.reports import ReportGenerator, AllureReportAdapter
 from beta_team.sdk.analytics.visualizer import DashboardVisualizer
+from beta_team.sdk.analytics.trend import TrendAnalyzer, RunSnapshot, TrendReport
 
 __all__ = [
     "MetricsCollector",
@@ -10,4 +11,7 @@ __all__ = [
     "ReportGenerator",
     "AllureReportAdapter",
     "DashboardVisualizer",
+    "TrendAnalyzer",
+    "RunSnapshot",
+    "TrendReport",
 ]
