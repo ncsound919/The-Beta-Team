@@ -35,7 +35,7 @@ First Time User Onboarding
     Log Test Metrics    onboarding_duration_s    ${duration}
     Run Keyword If    ${duration} > ${SLOW_THRESHOLD}
     ...    Log    Onboarding exceeded ${SLOW_THRESHOLD}s threshold (took ${duration}s)    WARN
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 Invalid Email Rejected During Onboarding
     [Documentation]    Verify that an invalid email address is rejected with a clear error message.
