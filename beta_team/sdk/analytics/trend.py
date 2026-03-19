@@ -275,7 +275,7 @@ class TrendAnalyzer:
         Returns:
             Dictionary with per-metric TrendReport data and snapshot list.
         """
-        all_metrics = list(self._LOWER_IS_BETTER | self._HIGHER_IS_BETTER)
+        all_metrics = sorted(self._LOWER_IS_BETTER | self._HIGHER_IS_BETTER)
         trends = {}
         for m in all_metrics:
             if self._extract(m):
