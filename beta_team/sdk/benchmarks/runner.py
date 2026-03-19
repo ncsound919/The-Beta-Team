@@ -359,7 +359,7 @@ class BenchmarkRunner:
         path = Path(self.history_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(self._history, f, indent=2)
+            json.dump(self._history, f, indent=2, default=str)
 
     # ------------------------------------------------------------------
     # Internal helpers
