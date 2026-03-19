@@ -47,7 +47,7 @@ Invalid Email Rejected During Onboarding
     Click Element    id=submit
     Page Should Contain    Invalid
     Page Should Not Contain    Welcome
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 Onboarding With Blank Email
     [Documentation]    Submitting a blank email should show a required-field error.
@@ -58,7 +58,7 @@ Onboarding With Blank Email
     Input Text    id=username    ${EMPTY}
     Click Element    id=submit
     Page Should Not Contain    Welcome
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 Onboarding Welcome Screen Contains Required Elements
     [Documentation]    After successful onboarding the welcome screen must show
@@ -71,7 +71,7 @@ Onboarding Welcome Screen Contains Required Elements
     Input Text    id=username    ${VALID_EMAIL}
     Click Element    id=submit
     Assert Page Contains All    Welcome
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 *** Keywords ***
 Start Application

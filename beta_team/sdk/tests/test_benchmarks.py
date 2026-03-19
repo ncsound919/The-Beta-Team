@@ -230,8 +230,8 @@ class TestBenchmarkRunner:
         assert stats.mean >= 0.01
 
     @pytest.mark.benchmark
-    def test_exception_in_fn_uses_elapsed(self):
-        """Exceptions inside the benchmark should not abort the run."""
+    def test_exception_in_fn_excludes_errored_iterations(self):
+        """Errored iterations are excluded from stats; error count is stored in metadata."""
         call_count = {"n": 0}
         def fragile():
             call_count["n"] += 1
@@ -241,7 +241,11 @@ class TestBenchmarkRunner:
 
         runner = BenchmarkRunner()
         stats = runner.run("fragile", fragile, iterations=4, warmup=0)
-        assert stats.iterations == 4
+        # 4 calls; calls 2 and 4 raise → 2 successes recorded
+        assert stats.iterations == 2
+        assert stats.mean == pytest.approx(0.1, abs=1e-6)
+        assert stats.metadata.get("_error_count") == 2
+        assert "_last_error" in stats.metadata
 
     @pytest.mark.benchmark
     def test_run_suite(self):

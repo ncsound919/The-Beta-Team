@@ -293,9 +293,9 @@ class TrendAnalyzer:
         Return a list of human-readable bullet-point trend summaries.
 
         Returns:
-            List of bullet strings, one per tracked metric.
+            List of bullet strings, one per tracked metric (alphabetical order).
         """
-        all_metrics = list(self._LOWER_IS_BETTER | self._HIGHER_IS_BETTER)
+        all_metrics = sorted(self._LOWER_IS_BETTER | self._HIGHER_IS_BETTER)
         bullets = []
         for m in all_metrics:
             if self._extract(m):

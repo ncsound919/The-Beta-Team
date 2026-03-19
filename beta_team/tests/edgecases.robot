@@ -39,7 +39,7 @@ SQL Injection Attempt Handled Safely
     Click Element    id=submit
     Page Should Not Contain    SQL
     Page Should Not Contain    syntax error
-    [Teardown]    Run Keywords    Beta Team Test Teardown    AND    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 Overlong Input Truncated Or Rejected
     [Documentation]    Fields should reject or gracefully truncate inputs exceeding
@@ -53,7 +53,7 @@ Overlong Input Truncated Or Rejected
     Input Text    id=email    ${long_text}
     Click Element    id=submit
     Page Should Not Contain    Welcome
-    [Teardown]    Run Keywords    Beta Team Test Teardown    AND    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 Large File Upload Handled
     [Documentation]    Uploading a large file should either succeed or show a
@@ -62,7 +62,7 @@ Large File Upload Handled
     Open Application    ${BUILD_PATH}
     Log Test Metrics    large_file_upload_mb    ${LARGE_FILE_MB}
     Log    Large file upload edge-case placeholder — implement with actual file chooser
-    [Teardown]    Run Keywords    Beta Team Test Teardown    AND    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 Network Disconnect Recovery
     [Documentation]    Simulate a network interruption and verify the app shows
@@ -71,7 +71,7 @@ Network Disconnect Recovery
     Open Application    ${BUILD_PATH}
     Log    Network disconnect simulation placeholder — implement with proxy/OS network control
     Log Test Metrics    network_resilience    tested
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 Memory Pressure Stability
     [Documentation]    Verify the application remains responsive and does not
@@ -80,7 +80,7 @@ Memory Pressure Stability
     Open Application    ${BUILD_PATH}
     Log    Memory pressure test placeholder — implement with psutil or OS stress tools
     Log Test Metrics    memory_pressure    tested
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 Rapid Repeated Submission Prevented
     [Documentation]    Submitting the same form multiple times in quick succession
@@ -93,7 +93,7 @@ Rapid Repeated Submission Prevented
     Click Element    id=submit
     Page Should Not Contain    500
     Page Should Not Contain    Error
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 *** Keywords ***
 Open Application
@@ -112,4 +112,4 @@ Verify Email Rejected
     Input Text    id=email    ${email}
     Click Element    id=submit
     Page Should Contain    Invalid email
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown

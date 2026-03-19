@@ -41,7 +41,7 @@ Create Complex Project
     Log Test Metrics    complex_project_creation    started
     Log    Complex project creation placeholder — implement with actual UI selectors
     Log Test Metrics    complex_project_creation    completed
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 Export Data In Multiple Formats
     [Documentation]    Power users can export data in each supported format;
@@ -61,7 +61,7 @@ Bulk Operations Complete Without Errors
     Log    Bulk operation placeholder — implement with actual UI selectors
     Page Should Not Contain    500
     Page Should Not Contain    Error
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 Session Timeout Warning Displayed
     [Documentation]    After a configurable idle period the app must show a
@@ -71,7 +71,7 @@ Session Timeout Warning Displayed
     Input Text    id=poweruser    ${POWER_USER_EMAIL}
     Click Element    id=advanced
     Log    Session timeout simulation placeholder — implement with configurable idle time
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
 
 *** Keywords ***
 Open Application
@@ -91,4 +91,4 @@ Verify Export Format Works
     Click Element    id=advanced
     Log Test Metrics    export_format    ${format}
     Log    Export ${format} placeholder — implement with actual export button selectors
-    [Teardown]    Close Application
+    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown

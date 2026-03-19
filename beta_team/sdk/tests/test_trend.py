@@ -187,6 +187,39 @@ class TestRegressionDetection:
         report = az.analyze("avg_response_time_ms")
         assert report.regressed
 
+    def test_crash_rate_regression_from_zero_baseline(self):
+        """crash_rate going from 0 to non-zero must be detected as a regression.
+
+        This validates the fix for the zero-baseline edge case: when first==0,
+        the denominator falls back to the last value so change_pct is still
+        meaningful and can exceed the threshold.
+        """
+        az = TrendAnalyzer(regression_threshold_pct=10.0)
+        for snap in [
+            RunSnapshot(run_id="r1", crash_rate=0.0),
+            RunSnapshot(run_id="r2", crash_rate=0.0),
+            RunSnapshot(run_id="r3", crash_rate=1.0),
+        ]:
+            az.add_snapshot(snap)
+        report = az.analyze("crash_rate")
+        assert report.regressed, (
+            "crash_rate going from 0 to 1 should be flagged as a regression"
+        )
+
+    def test_flaky_rate_regression_from_zero_baseline(self):
+        """flaky_rate going from 0 to non-zero must be detected as a regression."""
+        az = TrendAnalyzer(regression_threshold_pct=10.0)
+        for snap in [
+            RunSnapshot(run_id="r1", flaky_rate=0.0),
+            RunSnapshot(run_id="r2", flaky_rate=0.0),
+            RunSnapshot(run_id="r3", flaky_rate=0.5),
+        ]:
+            az.add_snapshot(snap)
+        report = az.analyze("flaky_rate")
+        assert report.regressed, (
+            "flaky_rate going from 0 to 0.5 should be flagged as a regression"
+        )
+
     def test_response_time_no_regression_small_increase(self):
         az = TrendAnalyzer(regression_threshold_pct=20.0)
         for snap in _make_snapshots([90]*4, response_times=[100, 105, 108, 112]):  # +12 %
