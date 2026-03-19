@@ -224,19 +224,35 @@ class BenchmarkRunner:
 
         # Measured runs
         values: list[float] = []
+        error_count = 0
+        last_error: Optional[Exception] = None
         for _ in range(iterations):
             start = time.perf_counter()
+            had_exception = False
             try:
                 result = benchmark_fn()
-            except Exception:
+            except Exception as exc:
+                had_exception = True
+                error_count += 1
+                last_error = exc
                 result = None
             elapsed = time.perf_counter() - start
 
-            values.append(result if isinstance(result, (int, float)) else elapsed)
+            # Only include successful iterations in statistics.
+            if not had_exception:
+                values.append(result if isinstance(result, (int, float)) else elapsed)
+
             if delay_s:
                 time.sleep(delay_s)
 
-        stats = RunStats.from_values(name, values, metadata or {})
+        # Attach error metadata (if any) without mutating caller-provided dict.
+        meta = dict(metadata) if metadata is not None else {}
+        if error_count:
+            meta.setdefault("_error_count", error_count)
+            if last_error is not None:
+                meta.setdefault("_last_error", repr(last_error))
+
+        stats = RunStats.from_values(name, values, meta)
         self._record(stats)
         return stats
 
