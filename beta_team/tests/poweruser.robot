@@ -41,7 +41,7 @@ Create Complex Project
     Log Test Metrics    complex_project_creation    started
     Log    Complex project creation placeholder — implement with actual UI selectors
     Log Test Metrics    complex_project_creation    completed
-    [Teardown]    Run Keywords    Close Application    AND    Beta Team Test Teardown
+    [Teardown]    Close Application
 
 Export Data In Multiple Formats
     [Documentation]    Power users can export data in each supported format;
