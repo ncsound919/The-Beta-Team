@@ -214,6 +214,9 @@ class BetaTeam:
         build_name = Path(self.build_path.get()).stem
         total_time = sum(d for dlist in scenario_durations.values() for d in dlist)
         durations_all = [d for dlist in scenario_durations.values() for d in dlist]
+        # Normalize total time by repeats to allow like-for-like comparisons across runs
+        repeats_safe = repeats if repeats and repeats > 0 else 1
+        mean_time_per_run = total_time / repeats_safe
 
         stats = {
             'mean_s': round(_mean(durations_all), 3),
@@ -229,6 +232,7 @@ class BetaTeam:
         current = {
             'build': build_name,
             'time': total_time,
+            'mean_time': mean_time_per_run,
             'repeats': repeats,
             'stats': stats,
             'pass_rate': pass_rate,
@@ -246,10 +250,11 @@ class BetaTeam:
         }
 
         prev = self.prev_results.get(build_name, {})
-        if prev and 'time' in prev:
-            prev_time = prev['time']
-            if prev_time > 0:
-                delta_percent = ((total_time - prev_time) / prev_time) * 100
+        if prev:
+            # Prefer normalized mean_time if available; fall back to total time for older entries
+            prev_mean_time = prev.get('mean_time', prev.get('time'))
+            if prev_mean_time and prev_mean_time > 0:
+                delta_percent = ((mean_time_per_run - prev_mean_time) / prev_mean_time) * 100
                 current['delta'] = f'{delta_percent:+.0f}%'
 
         # Merge with existing history instead of replacing it
